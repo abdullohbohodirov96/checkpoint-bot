@@ -119,7 +119,9 @@ class CheckpointService:
     def get_all_objects(self) -> Optional[List[Dict[str, Any]]]:
         """Barcha obyektlarni olish. Xato bo'lsa None qaytaradi."""
         try:
+            print("▶️ [DEBUG] SELECT from 'objects' table...")
             res = self.sb.table("objects").select("*").order("name").execute()
+            print(f"✅ [DEBUG] SELECT success: {len(res.data) if res.data else 0} talab yozildi.")
             return res.data
         except Exception as e:
             print(f"❌ Obyektlarni olishda xato: {e}")
@@ -148,13 +150,15 @@ class CheckpointService:
             "longitude": longitude,
             "radius": radius,
         }
-        if not self.sb: return data
+        if not self.sb: return None
         try:
+            print(f"▶️ [DEBUG] INSERT into 'objects' table: {data}")
             res = self.sb.table("objects").insert(data).execute()
-            return res.data[0] if res.data else data
+            print(f"✅ [DEBUG] INSERT success: {res}")
+            return res.data[0] if res.data else None
         except Exception as e:
-            print(f"❌ Obyekt qo'shishda xato: {e}")
-            return data
+            print(f"❌ [DEBUG] INSERT xatolik: {e}")
+            return None
 
     def delete_object(self, object_id: int) -> bool:
         """Obyektni o'chirish"""

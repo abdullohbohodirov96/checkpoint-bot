@@ -52,6 +52,10 @@ async def list_objects(message: Message, state: FSMContext):
     await state.clear()
     objects = checkpoint_service.get_all_objects()
 
+    if objects is None:
+        await message.answer("⚠️ Obyektlarni yuklashda xatolik yuz berdi.")
+        return
+
     if not objects:
         await message.answer("📋 Hech qanday obyekt yo'q.")
         return
@@ -123,6 +127,11 @@ async def add_coordinates(message: Message, state: FSMContext):
     )
 
     await state.clear()
+    
+    if obj is None:
+        await message.answer("❌ Obyektni saqlashda xatolik yuz berdi.")
+        return
+
     await message.answer(
         f"✅ <b>Obyekt muvaffaqiyatli qo'shildi!</b>\n\n"
         f"🏗 {obj['name']}\n"
