@@ -28,7 +28,7 @@ config = get_settings()
 
 async def health_check(request):
     """Dummy health check HTTP endpoint for Render"""
-    return web.Response(text="Bot is running!")
+    return web.Response(text="OK")
 
 async def main():
     """Botni ishga tushirish"""
@@ -93,6 +93,8 @@ async def main():
         logger.info(f"🌐 Webhook mode: {full_webhook_url}")
 
         app = web.Application()
+        app.router.add_get("/", health_check)  # Health check for Render
+        
         SimpleRequestHandler(
             dispatcher=dp,
             bot=bot,
