@@ -1,0 +1,16 @@
+# Render.com deployment configuration
+services:
+  - type: worker
+    name: checkpoint-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m bot.main
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        value: 1282014621
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///checkpoint.db
+      - key: DEFAULT_RADIUS
+        value: 500

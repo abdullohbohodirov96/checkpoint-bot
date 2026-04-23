@@ -159,8 +159,6 @@ async def location_received(message: Message, session: AsyncSession, state: FSMC
             parse_mode="HTML",
             reply_markup=menu_kb,
         )
-        # Admin ga xabar
-        await notification_service.notify_checkpoint(user, obj, checkpoint)
     else:
         # ❌ RAD ETILDI
         await message.answer(
@@ -173,6 +171,9 @@ async def location_received(message: Message, session: AsyncSession, state: FSMC
             reply_markup=menu_kb,
         )
         await message.answer("🔄 Qayta urinasizmi?", reply_markup=retry_kb())
+
+    # Har qanday holatda adminga yuborish
+    await notification_service.notify_checkpoint(user, obj, checkpoint, is_accepted)
 
     await state.clear()
 
