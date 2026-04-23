@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///checkpoint.db"
 
     # Admin — Telegram user ID (raqam)
-    ADMIN_TELEGRAM_ID: int = 0
+    ADMIN_TELEGRAM_ID: int = 1282014621
+
+    # Kanal yoki Gruppa ID
+    CHANNEL_ID: int = -5175061069
 
     DEFAULT_RADIUS: int = 500
 

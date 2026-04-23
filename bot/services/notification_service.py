@@ -18,7 +18,7 @@ class NotificationService:
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.admin_id = settings.ADMIN_TELEGRAM_ID
+        self.channel_id = settings.CHANNEL_ID
 
     async def notify_checkpoint(
         self,
@@ -28,9 +28,9 @@ class NotificationService:
         is_accepted: bool,
     ) -> bool:
         """
-        Checkpoint urinishi haqida admin ga xabar yuborish.
+        Checkpoint urinishi haqida kanalga xabar yuborish.
         """
-        if not self.admin_id:
+        if not self.channel_id:
             return False
 
         # Vaqt — UTC+5 (Toshkent)
@@ -60,7 +60,7 @@ class NotificationService:
 
         try:
             await self.bot.send_message(
-                chat_id=self.admin_id,
+                chat_id=self.channel_id,
                 text=text,
             )
             return True

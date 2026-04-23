@@ -10,6 +10,8 @@ services:
         sync: false
       - key: ADMIN_TELEGRAM_ID
         value: 1282014621
+      - key: CHANNEL_ID
+        value: -5175061069
       - key: DATABASE_URL
         value: sqlite+aiosqlite:///checkpoint.db
       - key: DEFAULT_RADIUS
