@@ -23,7 +23,7 @@ settings = get_settings()
 router = Router(name="admin")
 checkpoint_service = CheckpointService()
 
-HISTORY_PER_PAGE = 10
+HISTORY_PER_PAGE = 20
 
 
 def is_admin(user_id: int) -> bool:
@@ -203,7 +203,9 @@ async def do_delete(callback: CallbackQuery):
 
 @router.message(F.text == "📋 Checkpointlar tarixi")
 async def admin_history(message: Message, state: FSMContext):
+    print(f"▶️ [DEBUG] Admin bossa: 📋 Checkpointlar tarixi. User: {message.from_user.id}")
     if not is_admin(message.from_user.id):
+        print(f"❌ [DEBUG] Ruxsat bekor qilindi (admin emas): {message.from_user.id}")
         return
 
     await state.clear()

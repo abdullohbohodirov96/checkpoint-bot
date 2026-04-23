@@ -80,15 +80,18 @@ class CheckpointService:
         """Foydalanuvchi checkpoint tarixini olish"""
         if not self.sb: return []
         try:
+            print(f"▶️ [DEBUG] SQL: select * from checkpoints where user_id = {user_id} order by created_at desc limit {limit}")
             res = self.sb.table("checkpoints")\
                 .select("*")\
                 .eq("user_id", user_id)\
                 .order("created_at", desc=True)\
                 .limit(limit)\
                 .execute()
+            rows_count = len(res.data) if res.data else 0
+            print(f"✅ [DEBUG] Olingan rowlar soni: {rows_count}")
             return res.data
         except Exception as e:
-            print(f"❌ Tarix olishda xato: {e}")
+            print(f"❌ [DEBUG] Query Error: {e}")
             return []
 
     # ──────────────────────────────────────────
@@ -102,14 +105,17 @@ class CheckpointService:
         """Barcha checkpoint tarixini olish (admin uchun)"""
         if not self.sb: return []
         try:
+            print(f"▶️ [DEBUG] SQL: select * from checkpoints order by created_at desc limit {limit}")
             res = self.sb.table("checkpoints")\
                 .select("*")\
                 .order("created_at", desc=True)\
                 .limit(limit)\
                 .execute()
+            rows_count = len(res.data) if res.data else 0
+            print(f"✅ [DEBUG] Olingan rowlar soni: {rows_count}")
             return res.data
         except Exception as e:
-            print(f"❌ Barcha tarixni olishda xato: {e}")
+            print(f"❌ [DEBUG] Query Error: {e}")
             return []
 
     # ──────────────────────────────────────────

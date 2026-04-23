@@ -14,11 +14,12 @@ from bot.keyboards.user_kb import history_pagination_kb
 router = Router(name="history")
 checkpoint_service = CheckpointService()
 
-PER_PAGE = 5
+PER_PAGE = 10
 
 
 @router.message(F.text == "📋 Tarix")
 async def show_history(message: Message, state: FSMContext):
+    print(f"▶️ [DEBUG] foydalanuvchi or admin bossa: 📋 Tarix. User: {message.from_user.id}")
     await state.clear()
 
     checkpoints = checkpoint_service.get_user_history(message.from_user.id, limit=50)
