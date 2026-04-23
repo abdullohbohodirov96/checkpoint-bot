@@ -17,7 +17,7 @@ router = Router(name="start")
 
 def get_menu_kb(telegram_id: int):
     """Foydalanuvchiga mos menyuni qaytaradi"""
-    if telegram_id == settings.ADMIN_TELEGRAM_ID:
+    if telegram_id in settings.admin_ids_list:
         return admin_menu_kb()
     return main_menu_kb()
 
@@ -28,6 +28,9 @@ async def cmd_start(message: Message, state: FSMContext):
     /start — menyuni ko'rsatish.
     """
     await state.clear()
+    
+    is_admin = message.from_user.id in settings.admin_ids_list
+    print(f"▶️ [DEBUG] /start bosildi. User: {message.from_user.id}, IsAdmin: {is_admin}, Admins: {settings.admin_ids_list}")
 
     # Foydalanuvchi nomi
     full_name = message.from_user.first_name or ""

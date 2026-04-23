@@ -25,8 +25,10 @@ checkpoint_service = CheckpointService()
 
 @router.message(F.text == "📍 Checkpoint qilish")
 async def start_checkpoint(message: Message, state: FSMContext):
+    print(f"▶️ [DEBUG] Checkpoint button pressed. User: {message.from_user.id}")
     await state.clear()
     objects = checkpoint_service.get_all_objects()
+    print(f"▶️ [DEBUG] Objects loaded from database: {len(objects) if objects else 0}")
     
     if objects is None:
         await message.answer("⚠️ Obyektlarni yuklashda xatolik yuz berdi.")
@@ -57,6 +59,7 @@ async def object_selected(callback: CallbackQuery, state: FSMContext):
         await state.clear()
         return
 
+    print(f"▶️ [DEBUG] Selected object: ID={object_id}, Name={obj['name']}")
     await state.update_data(object_id=object_id, object_name=obj["name"])
     
     await callback.message.edit_text(
@@ -76,6 +79,7 @@ async def object_selected(callback: CallbackQuery, state: FSMContext):
 async def purpose_selected(callback: CallbackQuery, state: FSMContext):
     raw_purpose = callback.data.split(":")[1]
     purpose = "Pelesos qilishga" if raw_purpose == "pelesos" else "Promifka qilishga"
+    print(f"▶️ [DEBUG] Selected purpose: {purpose}")
 
     await state.update_data(purpose=purpose)
 
@@ -96,6 +100,7 @@ async def purpose_selected(callback: CallbackQuery, state: FSMContext):
 async def location_received(message: Message, state: FSMContext):
     user_lat = message.location.latitude
     user_lon = message.location.longitude
+    print(f"▶️ [DEBUG] Location received: {user_lat}, {user_lon}")
 
     await state.update_data(
         user_lat=user_lat,
@@ -141,6 +146,7 @@ async def photo_received(message: Message, state: FSMContext, bot: Bot):
 
     distance, is_accepted = checkpoint_service.verify_location(user_lat, user_lon, obj)
     status = "Keldi" if is_accepted else "Kelmadi"
+    print(f"▶️ [DEBUG] Distance calculated: {distance:.2f} m. Status: {status}")
 
     checkpoint = checkpoint_service.save_checkpoint(
         user_id=message.from_user.id,
@@ -151,6 +157,11 @@ async def photo_received(message: Message, state: FSMContext, bot: Bot):
         status=status,
         purpose=purpose,
     )
+    
+    if checkpoint.get("created_at"):
+        print("✅ [DEBUG] Insert checkpoint success")
+    else:
+        print("❌ [DEBUG] Insert checkpoint error")
 
     menu_kb = get_menu_kb(message.from_user.id)
 

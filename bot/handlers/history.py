@@ -17,7 +17,7 @@ checkpoint_service = CheckpointService()
 PER_PAGE = 5
 
 
-@router.message(F.text == "📋 Mening tarixim")
+@router.message(F.text == "📋 Tarix")
 async def show_history(message: Message, state: FSMContext):
     await state.clear()
 
@@ -25,7 +25,7 @@ async def show_history(message: Message, state: FSMContext):
 
     if not checkpoints:
         await message.answer(
-            "📋 <b>Tarixingiz</b>\n\nHozircha checkpoint yo'q.",
+            "📋 Tarixingiz\n\nHozircha checkpoint yo'q.",
             parse_mode="HTML",
         )
         return
@@ -64,7 +64,7 @@ async def history_page(callback: CallbackQuery):
 
 
 def _format_history(checkpoints, page: int, total: int) -> str:
-    text = f"📋 <b>Mening tarixim</b> ({total} ta eng oxirgi)\n\n"
+    text = f"📋 Tarixingiz ({total} ta)\n\n"
 
     start_idx = (page - 1) * PER_PAGE
     end_idx = start_idx + PER_PAGE
@@ -84,10 +84,20 @@ def _format_history(checkpoints, page: int, total: int) -> str:
 
         status_icon = "✅" if cp.get("status") == "Keldi" else "❌"
         obj_name = cp.get("object_name", "?")
+        
+        raw_purpose = cp.get('purpose', 'Nomalum')
+        if "Pelesos" in raw_purpose:
+            purpose_str = f"🧹 {raw_purpose}"
+        elif "Promifka" in raw_purpose:
+            purpose_str = f"💧 {raw_purpose}"
+        else:
+            purpose_str = raw_purpose
 
         text += (
-            f"{i}. {status_icon} <b>{obj_name}</b>\n"
-            f"   🕐 {time_str}\n\n"
+            f"{i}. 🏗 Obyekt: <b>{obj_name}</b>\n"
+            f"   📌 Status: {cp.get('status', '?')} {status_icon}\n"
+            f"   {purpose_str}\n"
+            f"   🕒 Vaqt: {time_str}\n\n"
         )
 
     return text

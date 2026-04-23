@@ -23,13 +23,13 @@ def admin_menu_kb() -> ReplyKeyboardMarkup:
     """
     keyboard = [
         [KeyboardButton(text="📍 Checkpoint qilish")],
-        [KeyboardButton(text="📋 Mening tarixim")],
+        [KeyboardButton(text="📋 Tarix")],
         [KeyboardButton(text="🏗 Obyektlar ro'yxati")],
         [
             KeyboardButton(text="➕ Manzil qo'shish"),
             KeyboardButton(text="🗑 Manzilni o'chirish"),
         ],
-        [KeyboardButton(text="📊 Checkpointlar tarixi")],
+        [KeyboardButton(text="📋 Checkpointlar tarixi")],
         [KeyboardButton(text="❓ Yordam")],
     ]
     return ReplyKeyboardMarkup(

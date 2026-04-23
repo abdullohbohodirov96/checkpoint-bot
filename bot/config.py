@@ -17,8 +17,15 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
 
-    # Admin — Telegram user ID (raqam)
-    ADMIN_TELEGRAM_ID: int = 1282014621
+    # Admin — Telegram user ID lari (vergul bilan ajratilgan string)
+    ADMIN_IDS: str = "1282014621"
+
+    @property
+    def admin_ids_list(self) -> list[int]:
+        try:
+            return [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip()]
+        except:
+            return []
 
     # Kanal yoki Gruppa ID
     CHANNEL_ID: int = -5175061069

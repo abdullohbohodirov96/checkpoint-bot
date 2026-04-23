@@ -24,7 +24,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton(text="📍 Checkpoint qilish")],
         [
-            KeyboardButton(text="📋 Mening tarixim"),
+            KeyboardButton(text="📋 Tarix"),
             KeyboardButton(text="❓ Yordam"),
         ],
     ]

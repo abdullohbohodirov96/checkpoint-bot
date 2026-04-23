@@ -27,7 +27,7 @@ HISTORY_PER_PAGE = 10
 
 
 def is_admin(user_id: int) -> bool:
-    return user_id == settings.ADMIN_TELEGRAM_ID
+    return user_id in settings.admin_ids_list
 
 
 @router.message(Command("testchannel"))
@@ -201,7 +201,7 @@ async def do_delete(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.text == "📊 Checkpointlar tarixi")
+@router.message(F.text == "📋 Checkpointlar tarixi")
 async def admin_history(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
@@ -210,7 +210,7 @@ async def admin_history(message: Message, state: FSMContext):
     checkpoints = checkpoint_service.get_all_history(limit=50) # simplify pagination for dict
 
     if not checkpoints:
-        await message.answer("📊 Hozircha checkpoint yo'q.")
+        await message.answer("📋 Barcha checkpointlar\n\nHozircha hech qanday checkpoint yo'q.")
         return
 
     total_pages = (len(checkpoints) + HISTORY_PER_PAGE - 1) // HISTORY_PER_PAGE
@@ -246,7 +246,7 @@ async def admin_history_page(callback: CallbackQuery):
 
 
 def _format_admin_history(checkpoints, page: int, total: int) -> str:
-    text = f"📊 <b>Checkpointlar tarixi</b> ({total} ta eng oxirgi)\n\n"
+    text = f"📋 <b>Barcha checkpointlar</b> ({total} ta eng oxirgi)\n\n"
 
     start_idx = (page - 1) * HISTORY_PER_PAGE
     end_idx = start_idx + HISTORY_PER_PAGE
@@ -268,10 +268,20 @@ def _format_admin_history(checkpoints, page: int, total: int) -> str:
 
         user_name = cp.get("username", "?")
         obj_name = cp.get("object_name", "?")
+        raw_purpose = cp.get('purpose', 'Nomalum')
+        if "Pelesos" in raw_purpose:
+            purpose = f"🧹 {raw_purpose}"
+        elif "Promifka" in raw_purpose:
+            purpose = f"💧 {raw_purpose}"
+        else:
+            purpose = raw_purpose
 
         text += (
-            f"{i}. {status_icon} <b>{obj_name}</b>\n"
-            f"   👤 {user_name} | 🕐 {time_str}\n\n"
+            f"{i}. 👤 User: {user_name}\n"
+            f"   🏗 Obyekt: <b>{obj_name}</b>\n"
+            f"   📌 Status: {status_icon}\n"
+            f"   {purpose}\n"
+            f"   🕒 Vaqt: {time_str}\n\n"
         )
 
     return text
