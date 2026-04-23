@@ -117,6 +117,7 @@ async def location_received(message: Message, state: FSMContext):
 @router.message(CheckpointStates.waiting_photo, F.photo)
 async def photo_received(message: Message, state: FSMContext, bot: Bot):
     photo_id = message.photo[-1].file_id
+    print(f"▶️ [DEBUG] Photo received. ID length: {len(photo_id)}")
 
     data = await state.get_data()
     object_id = data.get("object_id")
@@ -158,10 +159,13 @@ async def photo_received(message: Message, state: FSMContext, bot: Bot):
         purpose=purpose,
     )
     
-    if checkpoint.get("created_at"):
-        print("✅ [DEBUG] Insert checkpoint success")
-    else:
-        print("❌ [DEBUG] Insert checkpoint error")
+    if not checkpoint or not checkpoint.get("created_at"):
+        print("❌ [DEBUG] CHECKPOINT INSERT error")
+        await message.answer("❌ Checkpointni saqlashda xatolik yuz berdi.", reply_markup=get_menu_kb(message.from_user.id))
+        await state.clear()
+        return
+
+    print("✅ [DEBUG] CHECKPOINT INSERT success")
 
     menu_kb = get_menu_kb(message.from_user.id)
 

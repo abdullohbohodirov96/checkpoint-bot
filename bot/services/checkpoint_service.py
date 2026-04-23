@@ -60,13 +60,14 @@ class CheckpointService:
             "status": status,
             "purpose": purpose,
         }
-        if not self.sb: return data
+        if not self.sb: return None
         try:
             res = self.sb.table("checkpoints").insert(data).execute()
+            print(f"✅ [DEBUG] CHECKPOINT INSERT success: {res.data}")
             return res.data[0] if res.data else data
         except Exception as e:
-            print(f"❌ Checkpoint saqlashda xato: {e}")
-            return data
+            print(f"❌ [DEBUG] CHECKPOINT INSERT error: {e}")
+            return None
 
     # ──────────────────────────────────────────
     # FOYDALANUVCHI TARIXINI OLISH
