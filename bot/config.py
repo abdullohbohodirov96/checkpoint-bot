@@ -13,10 +13,9 @@ class Settings(BaseSettings):
     # Telegram Bot
     BOT_TOKEN: str = ""
 
-    # Database — SQLite (default) yoki PostgreSQL
-    # SQLite: sqlite+aiosqlite:///checkpoint.db
-    # PostgreSQL: postgresql+asyncpg://user:pass@host:port/db
-    DATABASE_URL: str = "sqlite+aiosqlite:///checkpoint.db"
+    # Supabase Database
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     # Admin — Telegram user ID (raqam)
     ADMIN_TELEGRAM_ID: int = 1282014621
@@ -27,20 +26,6 @@ class Settings(BaseSettings):
     DEFAULT_RADIUS: int = 500
 
     WEBHOOK_URL: str = ""
-
-    @property
-    def async_database_url(self) -> str:
-        """DATABASE_URL ni asyncpg formatiga o'zgartirish (faqat PostgreSQL uchun)"""
-        url = self.DATABASE_URL
-        if url.startswith("postgresql://"):
-            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        elif url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-        return url
-
-    @property
-    def is_sqlite(self) -> bool:
-        return self.DATABASE_URL.startswith("sqlite")
 
     class Config:
         env_file = ".env"

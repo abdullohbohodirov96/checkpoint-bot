@@ -6,10 +6,8 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import get_settings
-from bot.services.user_service import UserService
 from bot.keyboards.user_kb import main_menu_kb
 from bot.keyboards.admin_kb import admin_menu_kb
 
@@ -25,9 +23,9 @@ def get_menu_kb(telegram_id: int):
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, session: AsyncSession, state: FSMContext):
+async def cmd_start(message: Message, state: FSMContext):
     """
-    /start — ro'yxatdan o'tkazish va menyuni ko'rsatish.
+    /start — menyuni ko'rsatish.
     """
     await state.clear()
 
@@ -36,14 +34,6 @@ async def cmd_start(message: Message, session: AsyncSession, state: FSMContext):
     if message.from_user.last_name:
         full_name += f" {message.from_user.last_name}"
     full_name = full_name.strip() or "Foydalanuvchi"
-
-    # Ro'yxatdan o'tkazish
-    user_service = UserService(session)
-    await user_service.get_or_create_user(
-        telegram_id=message.from_user.id,
-        username=message.from_user.username,
-        full_name=full_name,
-    )
 
     text = (
         f"👋 Assalomu alaykum, <b>{full_name}</b>!\n\n"

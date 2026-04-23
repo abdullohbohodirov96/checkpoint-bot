@@ -17,7 +17,6 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 from bot.config import get_settings
 from bot.database.db import init_db
-from bot.middlewares.db_middleware import DatabaseMiddleware
 
 # Handlerlar
 from bot.handlers import start, checkpoint, history, objects_list, help, settings, admin
@@ -50,7 +49,7 @@ async def main():
         logger.warning("⚠️ ADMIN_TELEGRAM_ID sozlanmagan! Admin funksiyalari ishlamaydi.")
 
     # Database
-    logger.info("📊 Database jadvallar yaratilmoqda...")
+    logger.info("📊 Database ulanmoqda (Supabase)...")
     await init_db()
 
     # Bot va Dispatcher
@@ -60,9 +59,7 @@ async def main():
     )
     dp = Dispatcher(storage=MemoryStorage())
 
-    # Middleware — DB session
-    dp.message.middleware(DatabaseMiddleware())
-    dp.callback_query.middleware(DatabaseMiddleware())
+
 
     # Routerlarni ro'yxatdan o'tkazish
     dp.include_routers(

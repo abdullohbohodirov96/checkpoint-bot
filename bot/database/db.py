@@ -1,72 +1,48 @@
 """
-Database ulanish, session boshqaruvi va default ma'lumotlar.
-SQLite va PostgreSQL ni qo'llab-quvvatlaydi.
+Supabase ulanishi.
 """
 
-from sqlalchemy import select, event
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-
+from supabase import Client, create_client
 from bot.config import get_settings
-from bot.models.models import Base, Object
+import logging
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
-# Engine parametrlari
-engine_kwargs = {
-    "echo": False,
-}
+# Supabase Client Singleton
+_supabase: Client = None
 
-# SQLite uchun maxsus sozlamalar
-if settings.is_sqlite:
-    engine_kwargs["connect_args"] = {"check_same_thread": False}
-else:
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 5
-
-# Async engine
-engine = create_async_engine(
-    settings.async_database_url,
-    **engine_kwargs,
-)
-
-# Session factory
-async_session = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
+def get_supabase() -> Client:
+    global _supabase
+    if _supabase is None:
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            logger.error("❌ SUPABASE_URL yoki SUPABASE_KEY topilmadi!")
+            raise ValueError("Missing Supabase credentials")
+        _supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+    return _supabase
 
 async def init_db():
     """
-    Jadvallarni yaratish va default obyektni qo'shish.
+    Ma'lumotlar bazasi tayyorligini tekshirish.
+    Supabase'da table'lar bor-yo'qligini, yoki default object qo'shishni tekshiramiz.
     """
-    # 1. Jadvallar yaratish
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database jadvallar tayyor")
-
-    # 2. Default obyektni qo'shish (agar mavjud bo'lmasa)
-    async with async_session() as session:
-        stmt = select(Object).where(Object.name == "Nurziyo 32")
-        result = await session.execute(stmt)
-        existing = result.scalar_one_or_none()
-
-        if not existing:
-            default_obj = Object(
-                name="Nurziyo 32",
-                latitude=41.390166,
-                longitude=69.271265,
-                radius=500,
-            )
-            session.add(default_obj)
-            await session.commit()
-            print("✅ Default obyekt qo'shildi: Nurziyo 32")
+    try:
+        sb = get_supabase()
+        
+        # Default obyektni tekshirish
+        res = sb.table("objects").select("*").eq("name", "Nurziyo 32").execute()
+        
+        if not res.data:
+            sb.table("objects").insert({
+                "name": "Nurziyo 32",
+                "latitude": 41.390166,
+                "longitude": 69.271265,
+                "radius": 500
+            }).execute()
+            logger.info("✅ Default obyekt qo'shildi: Nurziyo 32")
         else:
-            print("ℹ️ Default obyekt mavjud: Nurziyo 32")
-
-
-async def get_session() -> AsyncSession:
-    """Yangi DB session qaytaradi"""
-    async with async_session() as session:
-        return session
+            logger.info("ℹ️ Default obyekt mavjud: Nurziyo 32")
+            
+        logger.info("✅ Supabase ulanishi muvaffaqiyatli o'rnatildi")
+    except Exception as e:
+        logger.error(f"❌ Supabase ulanishida xatolik: {e}")

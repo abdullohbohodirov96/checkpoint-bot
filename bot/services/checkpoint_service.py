@@ -1,24 +1,18 @@
 """
 Checkpoint tekshirish xizmati.
-Haversine formulasi orqali masofa hisoblash va checkpoint saqlash.
+Haversine formulasi orqali masofa hisoblash va supabase orqali saqlash.
 """
 
-from datetime import datetime, timedelta
-from typing import Optional, List, Tuple
-
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-from bot.models.models import Checkpoint, Object
+from typing import Optional, List, Tuple, Dict, Any
 from bot.utils.haversine import haversine
+from bot.database.db import get_supabase
 
 
 class CheckpointService:
     """Checkpoint tekshirish va saqlash"""
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    def __init__(self):
+        self.sb = get_supabase()
 
     # ──────────────────────────────────────────
     # TEKSHIRISH
@@ -28,135 +22,106 @@ class CheckpointService:
         self,
         user_lat: float,
         user_lon: float,
-        obj: Object,
+        obj: Dict[str, Any],
     ) -> Tuple[float, bool]:
         """
         Foydalanuvchi lokatsiyasini obyekt bilan solishtirish.
         Returns: (masofa_metrda, qabul_qilindimi)
         """
-        distance = haversine(user_lat, user_lon, obj.latitude, obj.longitude)
-        is_accepted = distance <= obj.radius
+        distance = haversine(user_lat, user_lon, obj["latitude"], obj["longitude"])
+        is_accepted = distance <= obj.get("radius", 500)
         return distance, is_accepted
 
     # ──────────────────────────────────────────
     # CHECKPOINT SAQLASH
     # ──────────────────────────────────────────
 
-    async def save_checkpoint(
+    def save_checkpoint(
         self,
         user_id: int,
-        object_id: int,
+        username: str,
+        object_name: str,
         user_latitude: float,
         user_longitude: float,
-        distance_in_meters: float,
         status: str,
-    ) -> Checkpoint:
+    ) -> Dict[str, Any]:
         """Checkpoint qaydini saqlash"""
-        checkpoint = Checkpoint(
-            user_id=user_id,
-            object_id=object_id,
-            user_latitude=user_latitude,
-            user_longitude=user_longitude,
-            distance_in_meters=distance_in_meters,
-            status=status,
-        )
-        self.session.add(checkpoint)
-        await self.session.flush()
-        return checkpoint
+        data = {
+            "user_id": user_id,
+            "username": username,
+            "object_name": object_name,
+            "latitude": user_latitude,
+            "longitude": user_longitude,
+            "status": status,
+        }
+        res = self.sb.table("checkpoints").insert(data).execute()
+        return res.data[0] if res.data else data
 
     # ──────────────────────────────────────────
     # FOYDALANUVCHI TARIXINI OLISH
     # ──────────────────────────────────────────
 
-    async def get_user_history(
+    def get_user_history(
         self,
         user_id: int,
         limit: int = 10,
-        offset: int = 0,
-    ) -> List[Checkpoint]:
+    ) -> List[Dict[str, Any]]:
         """Foydalanuvchi checkpoint tarixini olish"""
-        stmt = (
-            select(Checkpoint)
-            .options(selectinload(Checkpoint.object))
-            .where(Checkpoint.user_id == user_id)
-            .order_by(Checkpoint.checked_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())
-
-    async def get_user_checkpoint_count(self, user_id: int) -> int:
-        stmt = select(func.count()).select_from(Checkpoint).where(Checkpoint.user_id == user_id)
-        result = await self.session.execute(stmt)
-        return result.scalar() or 0
+        res = self.sb.table("checkpoints")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        return res.data
 
     # ──────────────────────────────────────────
     # ADMIN — BARCHA TARIX
     # ──────────────────────────────────────────
 
-    async def get_all_history(
+    def get_all_history(
         self,
         limit: int = 10,
-        offset: int = 0,
-    ) -> List[Checkpoint]:
+    ) -> List[Dict[str, Any]]:
         """Barcha checkpoint tarixini olish (admin uchun)"""
-        stmt = (
-            select(Checkpoint)
-            .options(
-                selectinload(Checkpoint.object),
-                selectinload(Checkpoint.user),
-            )
-            .order_by(Checkpoint.checked_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())
-
-    async def get_all_checkpoint_count(self) -> int:
-        stmt = select(func.count()).select_from(Checkpoint)
-        result = await self.session.execute(stmt)
-        return result.scalar() or 0
+        res = self.sb.table("checkpoints")\
+            .select("*")\
+            .order("created_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        return res.data
 
     # ──────────────────────────────────────────
     # OBYEKTLAR
     # ──────────────────────────────────────────
 
-    async def get_all_objects(self) -> List[Object]:
+    def get_all_objects(self) -> List[Dict[str, Any]]:
         """Barcha obyektlarni olish"""
-        stmt = select(Object).order_by(Object.name)
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+        res = self.sb.table("objects").select("*").order("name").execute()
+        return res.data
 
-    async def get_object_by_id(self, object_id: int) -> Optional[Object]:
-        stmt = select(Object).where(Object.id == object_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+    def get_object_by_id(self, object_id: int) -> Optional[Dict[str, Any]]:
+        res = self.sb.table("objects").select("*").eq("id", object_id).execute()
+        return res.data[0] if res.data else None
 
-    async def add_object(
+    def add_object(
         self,
         name: str,
         latitude: float,
         longitude: float,
         radius: int = 500,
-    ) -> Object:
+    ) -> Dict[str, Any]:
         """Yangi obyekt qo'shish"""
-        obj = Object(
-            name=name,
-            latitude=latitude,
-            longitude=longitude,
-            radius=radius,
-        )
-        self.session.add(obj)
-        await self.session.flush()
-        return obj
+        data = {
+            "name": name,
+            "latitude": latitude,
+            "longitude": longitude,
+            "radius": radius,
+        }
+        res = self.sb.table("objects").insert(data).execute()
+        return res.data[0] if res.data else data
 
-    async def delete_object(self, object_id: int) -> bool:
+    def delete_object(self, object_id: int) -> bool:
         """Obyektni o'chirish"""
-        obj = await self.get_object_by_id(object_id)
-        if not obj:
-            return False
-        await self.session.delete(obj)
-        await self.session.flush()
-        return True
+        res = self.sb.table("objects").delete().eq("id", object_id).execute()
+        return len(res.data) > 0

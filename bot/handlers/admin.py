@@ -1,16 +1,13 @@
 """
 Admin handlerlari.
-Doimiy reply keyboard tugmalari bilan ishlaydi.
-Faqat ADMIN_TELEGRAM_ID ga ega foydalanuvchi ishlatadi.
 """
 
-from datetime import timedelta
+from datetime import datetime, timezone, timedelta
 
 from aiogram import Router, F, Bot
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import get_settings
 from bot.states.states import AdminAddObjectStates
@@ -24,6 +21,7 @@ from bot.keyboards.admin_kb import (
 
 settings = get_settings()
 router = Router(name="admin")
+checkpoint_service = CheckpointService()
 
 HISTORY_PER_PAGE = 10
 
@@ -32,13 +30,8 @@ def is_admin(user_id: int) -> bool:
     return user_id == settings.ADMIN_TELEGRAM_ID
 
 
-# ══════════════════════════════════════════
-# TEST CHANNEL LOGIC
-# ══════════════════════════════════════════
-
 @router.message(Command("testchannel"))
 async def test_channel_cmd(message: Message, bot: Bot):
-    """Kanalga test xabar yuborish"""
     if not is_admin(message.from_user.id):
         return
         
@@ -51,19 +44,13 @@ async def test_channel_cmd(message: Message, bot: Bot):
         print(f"❌ Kanalga xabar yuborishda xato: {e}")
 
 
-# ══════════════════════════════════════════
-# OBYEKTLAR RO'YXATI
-# ══════════════════════════════════════════
-
 @router.message(F.text == "🏗 Obyektlar ro'yxati")
-async def list_objects(message: Message, session: AsyncSession, state: FSMContext):
-    """Barcha obyektlarni ko'rsatish"""
+async def list_objects(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
 
     await state.clear()
-    service = CheckpointService(session)
-    objects = await service.get_all_objects()
+    objects = checkpoint_service.get_all_objects()
 
     if not objects:
         await message.answer("📋 Hech qanday obyekt yo'q.")
@@ -72,22 +59,17 @@ async def list_objects(message: Message, session: AsyncSession, state: FSMContex
     text = "🏗 <b>Obyektlar ro'yxati</b>\n\n"
     for i, obj in enumerate(objects, 1):
         text += (
-            f"{i}. <b>{obj.name}</b>\n"
-            f"   📍 {obj.latitude}, {obj.longitude}\n"
-            f"   📏 Radius: {obj.radius} m\n\n"
+            f"{i}. <b>{obj['name']}</b>\n"
+            f"   📍 {obj['latitude']}, {obj['longitude']}\n"
+            f"   📏 Radius: {obj.get('radius', 500)} m\n\n"
         )
     text += f"Jami: {len(objects)} ta"
 
     await message.answer(text, parse_mode="HTML")
 
 
-# ══════════════════════════════════════════
-# YANGI OBYEKT QO'SHISH
-# ══════════════════════════════════════════
-
 @router.message(F.text == "➕ Manzil qo'shish")
 async def add_object_start(message: Message, state: FSMContext):
-    """Yangi obyekt qo'shishni boshlash"""
     if not is_admin(message.from_user.id):
         return
 
@@ -112,7 +94,7 @@ async def add_name(message: Message, state: FSMContext):
 
 
 @router.message(AdminAddObjectStates.entering_coordinates)
-async def add_coordinates(message: Message, session: AsyncSession, state: FSMContext):
+async def add_coordinates(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
 
@@ -132,38 +114,31 @@ async def add_coordinates(message: Message, session: AsyncSession, state: FSMCon
         return
 
     data = await state.get_data()
-    service = CheckpointService(session)
 
-    obj = await service.add_object(
+    obj = checkpoint_service.add_object(
         name=data["name"],
         latitude=lat,
         longitude=lon,
-        radius=500, # default radius
+        radius=500,
     )
 
     await state.clear()
     await message.answer(
         f"✅ <b>Obyekt muvaffaqiyatli qo'shildi!</b>\n\n"
-        f"🏗 {obj.name}\n"
-        f"📍 {obj.latitude}, {obj.longitude}\n"
-        f"📏 Radius: {obj.radius} m",
+        f"🏗 {obj['name']}\n"
+        f"📍 {obj['latitude']}, {obj['longitude']}\n"
+        f"📏 Radius: {obj.get('radius', 500)} m",
         parse_mode="HTML",
     )
 
 
-# ══════════════════════════════════════════
-# OBYEKTNI O'CHIRISH
-# ══════════════════════════════════════════
-
 @router.message(F.text == "🗑 Manzilni o'chirish")
-async def delete_object_start(message: Message, session: AsyncSession, state: FSMContext):
-    """O'chirish uchun obyektlar ro'yxati"""
+async def delete_object_start(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
 
     await state.clear()
-    service = CheckpointService(session)
-    objects = await service.get_all_objects()
+    objects = checkpoint_service.get_all_objects()
 
     if not objects:
         await message.answer("📋 Hech qanday obyekt yo'q.")
@@ -177,22 +152,20 @@ async def delete_object_start(message: Message, session: AsyncSession, state: FS
 
 
 @router.callback_query(F.data.startswith("admin:delete_confirm:"))
-async def delete_confirm(callback: CallbackQuery, session: AsyncSession):
-    """Tasdiqlash so'rash"""
+async def delete_confirm(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔️ Ruxsat yo'q!", show_alert=True)
         return
 
     object_id = int(callback.data.split(":")[2])
-    service = CheckpointService(session)
-    obj = await service.get_object_by_id(object_id)
+    obj = checkpoint_service.get_object_by_id(object_id)
 
     if not obj:
         await callback.answer("❌ Topilmadi!", show_alert=True)
         return
 
     await callback.message.edit_text(
-        f"🗑 <b>{obj.name}</b> ni o'chirmoqchimisiz?\n\n"
+        f"🗑 <b>{obj['name']}</b> ni o'chirmoqchimisiz?\n\n"
         "⚠️ Bu amalni ortga qaytarib bo'lmaydi!",
         parse_mode="HTML",
         reply_markup=confirm_delete_kb(object_id),
@@ -201,18 +174,15 @@ async def delete_confirm(callback: CallbackQuery, session: AsyncSession):
 
 
 @router.callback_query(F.data.startswith("admin:do_delete:"))
-async def do_delete(callback: CallbackQuery, session: AsyncSession):
-    """O'chirishni amalga oshirish"""
+async def do_delete(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
         return
 
     object_id = int(callback.data.split(":")[2])
-    service = CheckpointService(session)
+    obj = checkpoint_service.get_object_by_id(object_id)
+    name = obj['name'] if obj else "?"
 
-    obj = await service.get_object_by_id(object_id)
-    name = obj.name if obj else "?"
-
-    deleted = await service.delete_object(object_id)
+    deleted = checkpoint_service.delete_object(object_id)
 
     if deleted:
         await callback.message.edit_text(f"✅ <b>{name}</b> o'chirildi!", parse_mode="HTML")
@@ -222,27 +192,20 @@ async def do_delete(callback: CallbackQuery, session: AsyncSession):
     await callback.answer()
 
 
-# ══════════════════════════════════════════
-# CHECKPOINTLAR TARIXI (ADMIN)
-# ══════════════════════════════════════════
-
 @router.message(F.text == "📊 Checkpointlar tarixi")
-async def admin_history(message: Message, session: AsyncSession, state: FSMContext):
-    """Barcha checkpoint tarixini ko'rsatish"""
+async def admin_history(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
 
     await state.clear()
-    service = CheckpointService(session)
-    total = await service.get_all_checkpoint_count()
+    checkpoints = checkpoint_service.get_all_history(limit=50) # simplify pagination for dict
 
-    if total == 0:
+    if not checkpoints:
         await message.answer("📊 Hozircha checkpoint yo'q.")
         return
 
-    checkpoints = await service.get_all_history(limit=HISTORY_PER_PAGE, offset=0)
-    total_pages = (total + HISTORY_PER_PAGE - 1) // HISTORY_PER_PAGE
-    text = _format_admin_history(checkpoints, page=1, total=total)
+    total_pages = (len(checkpoints) + HISTORY_PER_PAGE - 1) // HISTORY_PER_PAGE
+    text = _format_admin_history(checkpoints, page=1, total=len(checkpoints))
 
     await message.answer(
         text,
@@ -252,19 +215,18 @@ async def admin_history(message: Message, session: AsyncSession, state: FSMConte
 
 
 @router.callback_query(F.data.startswith("admin:history_page:"))
-async def admin_history_page(callback: CallbackQuery, session: AsyncSession):
-    """Sahifalash"""
+async def admin_history_page(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
         return
 
     page = int(callback.data.split(":")[2])
-    service = CheckpointService(session)
-    total = await service.get_all_checkpoint_count()
-    total_pages = (total + HISTORY_PER_PAGE - 1) // HISTORY_PER_PAGE
+    checkpoints = checkpoint_service.get_all_history(limit=50)
+    total_pages = (len(checkpoints) + HISTORY_PER_PAGE - 1) // HISTORY_PER_PAGE
+    
+    if page > total_pages:
+        page = total_pages
 
-    offset = (page - 1) * HISTORY_PER_PAGE
-    checkpoints = await service.get_all_history(limit=HISTORY_PER_PAGE, offset=offset)
-    text = _format_admin_history(checkpoints, page=page, total=total)
+    text = _format_admin_history(checkpoints, page=page, total=len(checkpoints))
 
     await callback.message.edit_text(
         text,
@@ -275,20 +237,32 @@ async def admin_history_page(callback: CallbackQuery, session: AsyncSession):
 
 
 def _format_admin_history(checkpoints, page: int, total: int) -> str:
-    text = f"📊 <b>Checkpointlar tarixi</b> ({total} ta)\n\n"
+    text = f"📊 <b>Checkpointlar tarixi</b> ({total} ta eng oxirgi)\n\n"
 
-    for i, cp in enumerate(checkpoints, start=(page - 1) * HISTORY_PER_PAGE + 1):
-        local_time = cp.checked_at + timedelta(hours=5)
-        time_str = local_time.strftime("%d.%m.%Y %H:%M")
-        status_icon = "✅" if cp.status == "accepted" else "❌"
+    start_idx = (page - 1) * HISTORY_PER_PAGE
+    end_idx = start_idx + HISTORY_PER_PAGE
+    page_data = checkpoints[start_idx:end_idx]
 
-        user_name = cp.user.display_name if cp.user else "?"
-        obj_name = cp.object.name if cp.object else "?"
+    for i, cp in enumerate(page_data, start=start_idx + 1):
+        created_at_str = cp.get("created_at")
+        if created_at_str:
+            try:
+                dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                local_time = dt + timedelta(hours=5)
+                time_str = local_time.strftime("%d.%m.%Y %H:%M")
+            except:
+                time_str = created_at_str
+        else:
+            time_str = "?"
+
+        status_icon = "✅" if cp.get("status") == "Keldi" else "❌"
+
+        user_name = cp.get("username", "?")
+        obj_name = cp.get("object_name", "?")
 
         text += (
             f"{i}. {status_icon} <b>{obj_name}</b>\n"
-            f"   👤 {user_name}\n"
-            f"   📏 {cp.distance_in_meters:.0f} m | 🕐 {time_str}\n\n"
+            f"   👤 {user_name} | 🕐 {time_str}\n\n"
         )
 
     return text
