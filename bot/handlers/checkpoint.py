@@ -12,6 +12,7 @@ from bot.services.checkpoint_service import CheckpointService
 from bot.services.notification_service import NotificationService
 from bot.keyboards.user_kb import (
     objects_inline_kb,
+    purpose_inline_kb,
     location_request_kb,
     retry_kb,
 )
@@ -53,8 +54,29 @@ async def object_selected(callback: CallbackQuery, state: FSMContext):
         return
 
     await state.update_data(object_id=object_id, object_name=obj["name"])
+    
     await callback.message.edit_text(
-        f"✅ Tanlangan: <b>{obj['name']}</b>\n\n"
+        f"✅ Tanlangan obyekt: <b>{obj['name']}</b>\n\n"
+        "❓ Nima qilishga keldingiz?",
+        parse_mode="HTML",
+        reply_markup=purpose_inline_kb()
+    )
+    await state.set_state(CheckpointStates.waiting_purpose)
+    await callback.answer()
+
+
+@router.callback_query(
+    CheckpointStates.waiting_purpose,
+    F.data.startswith("purpose:"),
+)
+async def purpose_selected(callback: CallbackQuery, state: FSMContext):
+    raw_purpose = callback.data.split(":")[1]
+    purpose = "Pelesos qilishga" if raw_purpose == "pelesos" else "Promifka qilishga"
+
+    await state.update_data(purpose=purpose)
+
+    await callback.message.edit_text(
+        f"✅ Maqsad: <b>{purpose}</b>\n\n"
         "📍 Endi joylashuvingizni yuboring:",
         parse_mode="HTML",
     )
@@ -70,6 +92,7 @@ async def object_selected(callback: CallbackQuery, state: FSMContext):
 async def location_received(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     object_id = data.get("object_id")
+    purpose = data.get("purpose", "Noma'lum")
 
     if not object_id:
         await message.answer(
@@ -89,7 +112,7 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
     full_name = message.from_user.first_name or ""
     if message.from_user.last_name:
         full_name += f" {message.from_user.last_name}"
-    username = f"@{message.from_user.username}" if message.from_user.username else full_name
+    username = f"@{message.from_user.username}" if message.from_user.username else full_name.strip()
 
     user_lat = message.location.latitude
     user_lon = message.location.longitude
@@ -104,6 +127,7 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
         user_latitude=user_lat,
         user_longitude=user_lon,
         status=status,
+        purpose=purpose,
     )
 
     menu_kb = get_menu_kb(message.from_user.id)
@@ -112,6 +136,7 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
         await message.answer(
             "✅ <b>Checkpoint qabul qilindi!</b>\n\n"
             f"🏗 Obyekt: {obj['name']}\n"
+            f"🛠 Maqsad: {purpose}\n"
             f"📏 Masofa: {distance:.0f} m\n"
             f"📍 Koordinata: {user_lat:.6f}, {user_lon:.6f}",
             parse_mode="HTML",
@@ -121,6 +146,7 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
         await message.answer(
             "❌ <b>Siz manzilga kelmadingiz!</b>\n\n"
             f"🏗 Obyekt: {obj['name']}\n"
+            f"🛠 Maqsad: {purpose}\n"
             f"📏 Sizning masofangiz: {distance:.0f} m\n"
             f"📏 Ruxsat etilgan: {obj.get('radius', 500)} m\n\n"
             "Objektga yaqinroq borib qayta urinib ko'ring.",

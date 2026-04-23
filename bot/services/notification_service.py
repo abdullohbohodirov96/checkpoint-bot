@@ -40,21 +40,23 @@ class NotificationService:
         if is_accepted:
             text = (
                 "✅ Yangi checkpoint\n"
-                f"Ishchi: {checkpoint['username']}\n"
-                f"Telegram ID: {checkpoint['user_id']}\n"
-                f"Obyekt: {checkpoint['object_name']}\n"
+                f"Ishchi: {checkpoint.get('username', '?')}\n"
+                f"Telegram ID: {checkpoint.get('user_id', '?')}\n"
+                f"Obyekt: {checkpoint.get('object_name', '?')}\n"
+                f"Nima qilishga: {checkpoint.get('purpose', 'Nomalum')}\n"
                 f"Vaqt: {time_str}\n"
-                f"Koordinata: {checkpoint['latitude']:.6f}, {checkpoint['longitude']:.6f}\n"
+                f"Koordinata: {checkpoint.get('latitude', 0):.6f}, {checkpoint.get('longitude', 0):.6f}\n"
                 "Status: Keldi"
             )
         else:
             text = (
                 "❌ Noto'g'ri checkpoint\n"
-                f"Ishchi: {checkpoint['username']}\n"
-                f"Telegram ID: {checkpoint['user_id']}\n"
-                f"Tanlangan obyekt: {checkpoint['object_name']}\n"
+                f"Ishchi: {checkpoint.get('username', '?')}\n"
+                f"Telegram ID: {checkpoint.get('user_id', '?')}\n"
+                f"Tanlangan obyekt: {checkpoint.get('object_name', '?')}\n"
+                f"Nima qilishga: {checkpoint.get('purpose', 'Nomalum')}\n"
                 f"Vaqt: {time_str}\n"
-                f"Koordinata: {checkpoint['latitude']:.6f}, {checkpoint['longitude']:.6f}\n"
+                f"Koordinata: {checkpoint.get('latitude', 0):.6f}, {checkpoint.get('longitude', 0):.6f}\n"
                 "Status: Manzilga kelmadi"
             )
 

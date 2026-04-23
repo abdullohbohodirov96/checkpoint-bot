@@ -44,6 +44,7 @@ class CheckpointService:
         user_latitude: float,
         user_longitude: float,
         status: str,
+        purpose: str,
     ) -> Dict[str, Any]:
         """Checkpoint qaydini saqlash"""
         data = {
@@ -53,6 +54,7 @@ class CheckpointService:
             "latitude": user_latitude,
             "longitude": user_longitude,
             "status": status,
+            "purpose": purpose,
         }
         res = self.sb.table("checkpoints").insert(data).execute()
         return res.data[0] if res.data else data

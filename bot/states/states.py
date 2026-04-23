@@ -8,6 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 class CheckpointStates(StatesGroup):
     """Checkpoint qilish jarayoni"""
     selecting_object = State()    # Obyektni tanlash
+    waiting_purpose = State()     # Nima qilishga kelgani
     waiting_location = State()    # Lokatsiya kutish
 
 
