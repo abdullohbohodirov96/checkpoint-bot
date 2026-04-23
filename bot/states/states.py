@@ -14,6 +14,4 @@ class CheckpointStates(StatesGroup):
 class AdminAddObjectStates(StatesGroup):
     """Admin: yangi obyekt qo'shish"""
     entering_name = State()
-    entering_latitude = State()
-    entering_longitude = State()
-    entering_radius = State()
+    entering_coordinates = State()

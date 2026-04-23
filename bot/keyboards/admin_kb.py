@@ -28,8 +28,8 @@ def admin_menu_kb() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📋 Mening tarixim")],
         [KeyboardButton(text="🏗 Obyektlar ro'yxati")],
         [
-            KeyboardButton(text="➕ Yangi obyekt qo'shish"),
-            KeyboardButton(text="🗑 Obyektni o'chirish"),
+            KeyboardButton(text="➕ Manzil qo'shish"),
+            KeyboardButton(text="🗑 Manzilni o'chirish"),
         ],
         [KeyboardButton(text="📊 Checkpointlar tarixi")],
         [KeyboardButton(text="❓ Yordam")],

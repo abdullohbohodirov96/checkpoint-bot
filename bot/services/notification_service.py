@@ -35,27 +35,33 @@ class NotificationService:
 
         # Vaqt — UTC+5 (Toshkent)
         local_time = checkpoint.checked_at + timedelta(hours=5)
-        time_str = local_time.strftime("%Y-%m-%d %H:%M")
+        time_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        status_text = "Keldi ✅" if is_accepted else "Rad etildi (Uzoqda) ❌"
-        header = "✅ <b>Yangi checkpoint (Qabul qilindi)</b>" if is_accepted else "❌ <b>Yangi checkpoint urinishi (Rad etildi)</b>"
-
-        text = (
-            f"{header}\n\n"
-            f"Ishchi: {user.display_name}\n"
-            f"Telegram ID: <code>{user.telegram_id}</code>\n"
-            f"Obyekt: {obj.name} (Ruxsat: {obj.radius}m)\n"
-            f"Vaqt: {time_str}\n"
-            f"Koordinata: {checkpoint.user_latitude:.6f}, {checkpoint.user_longitude:.6f}\n"
-            f"Haqiqiy masofa: {checkpoint.distance_in_meters:.0f} m\n"
-            f"Status: {status_text}"
-        )
+        if is_accepted:
+            text = (
+                "✅ Yangi checkpoint\n"
+                f"Ishchi: {user.display_name}\n"
+                f"Telegram ID: {user.telegram_id}\n"
+                f"Obyekt: {obj.name}\n"
+                f"Vaqt: {time_str}\n"
+                f"Koordinata: {checkpoint.user_latitude:.6f}, {checkpoint.user_longitude:.6f}\n"
+                "Status: Keldi"
+            )
+        else:
+            text = (
+                "❌ Noto'g'ri checkpoint\n"
+                f"Ishchi: {user.display_name}\n"
+                f"Telegram ID: {user.telegram_id}\n"
+                f"Tanlangan obyekt: {obj.name}\n"
+                f"Vaqt: {time_str}\n"
+                f"Koordinata: {checkpoint.user_latitude:.6f}, {checkpoint.user_longitude:.6f}\n"
+                "Status: Manzilga kelmadi"
+            )
 
         try:
             await self.bot.send_message(
                 chat_id=self.admin_id,
                 text=text,
-                parse_mode="HTML",
             )
             return True
         except Exception as e:

@@ -21,8 +21,9 @@ class Settings(BaseSettings):
     # Admin — Telegram user ID (raqam)
     ADMIN_TELEGRAM_ID: int = 0
 
-    # Default checkpoint radiusi (metr)
     DEFAULT_RADIUS: int = 500
+
+    WEBHOOK_URL: str = ""
 
     @property
     def async_database_url(self) -> str:

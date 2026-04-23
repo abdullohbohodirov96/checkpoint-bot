@@ -65,7 +65,7 @@ async def list_objects(message: Message, session: AsyncSession, state: FSMContex
 # YANGI OBYEKT QO'SHISH
 # ══════════════════════════════════════════
 
-@router.message(F.text == "➕ Yangi obyekt qo'shish")
+@router.message(F.text == "➕ Manzil qo'shish")
 async def add_object_start(message: Message, state: FSMContext):
     """Yangi obyekt qo'shishni boshlash"""
     if not is_admin(message.from_user.id):
@@ -82,72 +82,33 @@ async def add_name(message: Message, state: FSMContext):
         return
 
     await state.update_data(name=message.text.strip())
-    await state.set_state(AdminAddObjectStates.entering_latitude)
+    await state.set_state(AdminAddObjectStates.entering_coordinates)
     await message.answer(
         f"✅ Nomi: <b>{message.text.strip()}</b>\n\n"
-        "📍 Latitude (kenglik) ni kiriting:\n"
-        "<i>Misol: 41.390166</i>",
+        "📍 Koordinatani kiriting:\n"
+        "Masalan: <code>41.390166, 69.271265</code>",
         parse_mode="HTML",
     )
 
 
-@router.message(AdminAddObjectStates.entering_latitude)
-async def add_latitude(message: Message, state: FSMContext):
+@router.message(AdminAddObjectStates.entering_coordinates)
+async def add_coordinates(message: Message, session: AsyncSession, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
 
+    text = message.text.strip()
     try:
-        lat = float(message.text.strip())
-        if not (-90 <= lat <= 90):
+        parts = text.split(',')
+        if len(parts) != 2:
+            raise ValueError
+        
+        lat = float(parts[0].strip())
+        lon = float(parts[1].strip())
+        
+        if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
             raise ValueError
     except ValueError:
-        await message.answer("❌ Noto'g'ri! Raqam kiriting (-90 dan 90 gacha).\nMisol: 41.390166")
-        return
-
-    await state.update_data(latitude=lat)
-    await state.set_state(AdminAddObjectStates.entering_longitude)
-    await message.answer(
-        f"✅ Latitude: <b>{lat}</b>\n\n"
-        "📍 Longitude (uzunlik) ni kiriting:\n"
-        "<i>Misol: 69.271265</i>",
-        parse_mode="HTML",
-    )
-
-
-@router.message(AdminAddObjectStates.entering_longitude)
-async def add_longitude(message: Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-
-    try:
-        lon = float(message.text.strip())
-        if not (-180 <= lon <= 180):
-            raise ValueError
-    except ValueError:
-        await message.answer("❌ Noto'g'ri! Raqam kiriting (-180 dan 180 gacha).\nMisol: 69.271265")
-        return
-
-    await state.update_data(longitude=lon)
-    await state.set_state(AdminAddObjectStates.entering_radius)
-    await message.answer(
-        f"✅ Longitude: <b>{lon}</b>\n\n"
-        "📏 Radiusni kiriting (metrda):\n"
-        "<i>Misol: 500</i>",
-        parse_mode="HTML",
-    )
-
-
-@router.message(AdminAddObjectStates.entering_radius)
-async def add_radius(message: Message, session: AsyncSession, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-
-    try:
-        radius = int(message.text.strip())
-        if radius <= 0:
-            raise ValueError
-    except ValueError:
-        await message.answer("❌ Noto'g'ri! Musbat butun son kiriting.\nMisol: 500")
+        await message.answer("❌ Noto'g'ri! Format quyidagicha bo'lishi kerak:\n41.390166, 69.271265")
         return
 
     data = await state.get_data()
@@ -155,9 +116,9 @@ async def add_radius(message: Message, session: AsyncSession, state: FSMContext)
 
     obj = await service.add_object(
         name=data["name"],
-        latitude=data["latitude"],
-        longitude=data["longitude"],
-        radius=radius,
+        latitude=lat,
+        longitude=lon,
+        radius=500, # default radius
     )
 
     await state.clear()
@@ -174,7 +135,7 @@ async def add_radius(message: Message, session: AsyncSession, state: FSMContext)
 # OBYEKTNI O'CHIRISH
 # ══════════════════════════════════════════
 
-@router.message(F.text == "🗑 Obyektni o'chirish")
+@router.message(F.text == "🗑 Manzilni o'chirish")
 async def delete_object_start(message: Message, session: AsyncSession, state: FSMContext):
     """O'chirish uchun obyektlar ro'yxati"""
     if not is_admin(message.from_user.id):
