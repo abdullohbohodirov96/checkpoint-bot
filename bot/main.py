@@ -80,6 +80,13 @@ async def main():
     logger.info(f"✅ Bot ishga tushdi: @{bot_info.username}")
     logger.info(f"🔑 Admin Telegram ID: {config.ADMIN_TELEGRAM_ID}")
 
+    # TEST: Kanalga xabar yuborib ko'rish
+    try:
+        await bot.send_message(chat_id=config.CHANNEL_ID, text="TEST XABAR")
+        logger.info(f"✅ TEST XABAR kanalga yuborildi: {config.CHANNEL_ID}")
+    except Exception as e:
+        logger.error(f"❌ TEST XABAR yuborishda xatolik yuz berdi: {e}")
+
     # Webhook or Polling
     webhook_url = os.environ.get("RENDER_EXTERNAL_URL", config.WEBHOOK_URL)
     port = int(os.environ.get("PORT", 8080))

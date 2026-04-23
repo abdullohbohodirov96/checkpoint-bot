@@ -6,7 +6,8 @@ Faqat ADMIN_TELEGRAM_ID ga ega foydalanuvchi ishlatadi.
 
 from datetime import timedelta
 
-from aiogram import Router, F
+from aiogram import Router, F, Bot
+from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,25 @@ HISTORY_PER_PAGE = 10
 
 def is_admin(user_id: int) -> bool:
     return user_id == settings.ADMIN_TELEGRAM_ID
+
+
+# ══════════════════════════════════════════
+# TEST CHANNEL LOGIC
+# ══════════════════════════════════════════
+
+@router.message(Command("testchannel"))
+async def test_channel_cmd(message: Message, bot: Bot):
+    """Kanalga test xabar yuborish"""
+    if not is_admin(message.from_user.id):
+        return
+        
+    try:
+        await bot.send_message(chat_id=settings.CHANNEL_ID, text="TEST XABAR")
+        await message.answer("✅ Kanalga test xabar yuborildi.")
+        print("✅ Kanalga test xabar yuborildi.")
+    except Exception as e:
+        await message.answer(f"❌ Kanal yuborishda xato: {e}")
+        print(f"❌ Kanalga xabar yuborishda xato: {e}")
 
 
 # ══════════════════════════════════════════
