@@ -12,7 +12,11 @@ class CheckpointService:
     """Checkpoint tekshirish va saqlash"""
 
     def __init__(self):
-        self.sb = get_supabase()
+        try:
+            self.sb = get_supabase()
+        except Exception as e:
+            print(f"❌ Supabase ulanishda xato: {e}")
+            self.sb = None
 
     # ──────────────────────────────────────────
     # TEKSHIRISH
@@ -56,8 +60,13 @@ class CheckpointService:
             "status": status,
             "purpose": purpose,
         }
-        res = self.sb.table("checkpoints").insert(data).execute()
-        return res.data[0] if res.data else data
+        if not self.sb: return data
+        try:
+            res = self.sb.table("checkpoints").insert(data).execute()
+            return res.data[0] if res.data else data
+        except Exception as e:
+            print(f"❌ Checkpoint saqlashda xato: {e}")
+            return data
 
     # ──────────────────────────────────────────
     # FOYDALANUVCHI TARIXINI OLISH
@@ -69,13 +78,18 @@ class CheckpointService:
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """Foydalanuvchi checkpoint tarixini olish"""
-        res = self.sb.table("checkpoints")\
-            .select("*")\
-            .eq("user_id", user_id)\
-            .order("created_at", desc=True)\
-            .limit(limit)\
-            .execute()
-        return res.data
+        if not self.sb: return []
+        try:
+            res = self.sb.table("checkpoints")\
+                .select("*")\
+                .eq("user_id", user_id)\
+                .order("created_at", desc=True)\
+                .limit(limit)\
+                .execute()
+            return res.data
+        except Exception as e:
+            print(f"❌ Tarix olishda xato: {e}")
+            return []
 
     # ──────────────────────────────────────────
     # ADMIN — BARCHA TARIX
@@ -86,25 +100,39 @@ class CheckpointService:
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """Barcha checkpoint tarixini olish (admin uchun)"""
-        res = self.sb.table("checkpoints")\
-            .select("*")\
-            .order("created_at", desc=True)\
-            .limit(limit)\
-            .execute()
-        return res.data
+        if not self.sb: return []
+        try:
+            res = self.sb.table("checkpoints")\
+                .select("*")\
+                .order("created_at", desc=True)\
+                .limit(limit)\
+                .execute()
+            return res.data
+        except Exception as e:
+            print(f"❌ Barcha tarixni olishda xato: {e}")
+            return []
 
     # ──────────────────────────────────────────
     # OBYEKTLAR
     # ──────────────────────────────────────────
 
-    def get_all_objects(self) -> List[Dict[str, Any]]:
-        """Barcha obyektlarni olish"""
-        res = self.sb.table("objects").select("*").order("name").execute()
-        return res.data
+    def get_all_objects(self) -> Optional[List[Dict[str, Any]]]:
+        """Barcha obyektlarni olish. Xato bo'lsa None qaytaradi."""
+        try:
+            res = self.sb.table("objects").select("*").order("name").execute()
+            return res.data
+        except Exception as e:
+            print(f"❌ Obyektlarni olishda xato: {e}")
+            return None
 
     def get_object_by_id(self, object_id: int) -> Optional[Dict[str, Any]]:
-        res = self.sb.table("objects").select("*").eq("id", object_id).execute()
-        return res.data[0] if res.data else None
+        if not self.sb: return None
+        try:
+            res = self.sb.table("objects").select("*").eq("id", object_id).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            print(f"❌ Obyektni olishda xato: {e}")
+            return None
 
     def add_object(
         self,
@@ -120,10 +148,20 @@ class CheckpointService:
             "longitude": longitude,
             "radius": radius,
         }
-        res = self.sb.table("objects").insert(data).execute()
-        return res.data[0] if res.data else data
+        if not self.sb: return data
+        try:
+            res = self.sb.table("objects").insert(data).execute()
+            return res.data[0] if res.data else data
+        except Exception as e:
+            print(f"❌ Obyekt qo'shishda xato: {e}")
+            return data
 
     def delete_object(self, object_id: int) -> bool:
         """Obyektni o'chirish"""
-        res = self.sb.table("objects").delete().eq("id", object_id).execute()
-        return len(res.data) > 0
+        if not self.sb: return False
+        try:
+            res = self.sb.table("objects").delete().eq("id", object_id).execute()
+            return len(res.data) > 0
+        except Exception as e:
+            print(f"❌ Obyektni o'chirishda xato: {e}")
+            return False

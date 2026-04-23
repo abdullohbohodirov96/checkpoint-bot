@@ -27,6 +27,10 @@ checkpoint_service = CheckpointService()
 async def start_checkpoint(message: Message, state: FSMContext):
     await state.clear()
     objects = checkpoint_service.get_all_objects()
+    
+    if objects is None:
+        await message.answer("⚠️ Obyektlarni yuklashda xatolik yuz berdi.")
+        return
 
     if not objects:
         await message.answer("😕 Hozircha hech qanday obyekt mavjud emas.")
@@ -163,6 +167,10 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
 async def retry_checkpoint(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     objects = checkpoint_service.get_all_objects()
+
+    if objects is None:
+        await callback.message.edit_text("⚠️ Obyektlarni yuklashda xatolik yuz berdi.")
+        return
 
     if not objects:
         await callback.message.edit_text("😕 Hech qanday obyekt mavjud emas.")
