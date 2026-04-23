@@ -9,9 +9,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
-from typing import List
-
-from bot.models.models import Object
+from typing import List, Dict, Any
 
 
 # ──────────────────────────────────────────────────
@@ -41,14 +39,14 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
 # CHECKPOINT — OBYEKT TANLASH
 # ──────────────────────────────────────────────────
 
-def objects_inline_kb(objects: List[Object]) -> InlineKeyboardMarkup:
+def objects_inline_kb(objects: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
     """Obyektlar ro'yxati — inline tugmalar"""
     buttons = []
     for obj in objects:
         buttons.append([
             InlineKeyboardButton(
-                text=f"🏗 {obj.name}",
-                callback_data=f"select_object:{obj.id}",
+                text=f"🏗 {obj['name']}",
+                callback_data=f"select_object:{obj['id']}",
             )
         ])
     buttons.append([

@@ -9,9 +9,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
-from typing import List
-
-from bot.models.models import Object
+from typing import List, Dict, Any
 
 
 # ──────────────────────────────────────────────────
@@ -45,14 +43,14 @@ def admin_menu_kb() -> ReplyKeyboardMarkup:
 # ADMIN — OBYEKT TANLASH (O'chirish uchun)
 # ──────────────────────────────────────────────────
 
-def admin_objects_delete_kb(objects: List[Object]) -> InlineKeyboardMarkup:
+def admin_objects_delete_kb(objects: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
     """O'chirish uchun obyektlar ro'yxati"""
     buttons = []
     for obj in objects:
         buttons.append([
             InlineKeyboardButton(
-                text=f"🏗 {obj.name} (r={obj.radius}m)",
-                callback_data=f"admin:delete_confirm:{obj.id}",
+                text=f"🏗 {obj.get('name', '?')} (r={obj.get('radius', 500)}m)",
+                callback_data=f"admin:delete_confirm:{obj.get('id', 0)}",
             )
         ])
     buttons.append([
