@@ -5,6 +5,8 @@ Bot kirish nuqtasi — ishga tushirish.
 import asyncio
 import logging
 import sys
+import os
+from aiohttp import web
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
@@ -21,6 +23,10 @@ from bot.handlers import start, checkpoint, history, objects_list, help, setting
 # Sozlamalar
 config = get_settings()
 
+
+async def health_check(request):
+    """Dummy health check HTTP endpoint for Render"""
+    return web.Response(text="Bot is running!")
 
 async def main():
     """Botni ishga tushirish"""
@@ -72,6 +78,16 @@ async def main():
     logger.info(f"✅ Bot ishga tushdi: @{bot_info.username}")
     logger.info(f"🔑 Admin Telegram ID: {config.ADMIN_TELEGRAM_ID}")
 
+    # Render Web Service uchun dummy HTTP server
+    port = int(os.environ.get("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"🌐 Dummy HTTP server ishga tushdi (PORT: {port})")
+
     # Polling boshlash
     try:
         # Eski update larni o'tkazib yuborish
@@ -79,6 +95,7 @@ async def main():
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
