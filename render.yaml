@@ -8,8 +8,8 @@ services:
     envVars:
       - key: BOT_TOKEN
         sync: false
-      - key: ADMIN_TELEGRAM_ID
-        value: 1282014621
+      - key: ADMIN_IDS
+        value: "1282014621,82167016"
       - key: CHANNEL_ID
         value: -5175061069
       - key: SUPABASE_URL

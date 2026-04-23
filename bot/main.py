@@ -45,8 +45,8 @@ async def main():
         logger.error("❌ BOT_TOKEN topilmadi! .env fayliga yozing.")
         sys.exit(1)
 
-    if not config.ADMIN_TELEGRAM_ID:
-        logger.warning("⚠️ ADMIN_TELEGRAM_ID sozlanmagan! Admin funksiyalari ishlamaydi.")
+    if not config.admin_ids_list:
+        logger.warning("⚠️ ADMIN_IDS sozlanmagan! Admin funksiyalari ishlamaydi.")
 
     # Database
     logger.info("📊 Database ulanmoqda (Supabase)...")
@@ -75,7 +75,7 @@ async def main():
     # Bot ma'lumotlarini olish
     bot_info = await bot.get_me()
     logger.info(f"✅ Bot ishga tushdi: @{bot_info.username}")
-    logger.info(f"🔑 Admin Telegram ID: {config.ADMIN_TELEGRAM_ID}")
+    logger.info(f"🔑 Admin Telegram ID(s): {config.admin_ids_list}")
 
 
 

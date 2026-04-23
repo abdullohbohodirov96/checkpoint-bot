@@ -67,7 +67,7 @@ pip install -r requirements.txt
 
 # .env faylini yaratish
 cp .env.example .env
-# .env faylini tahrirlang: BOT_TOKEN, DATABASE_URL, ADMIN_TELEGRAM_ID
+# .env faylini tahrirlang: BOT_TOKEN, DATABASE_URL, ADMIN_IDS
 ```
 
 ### 3. Database
@@ -92,7 +92,7 @@ python -m bot.main
 ```bash
 # .env faylini sozlang
 cp .env.example .env
-nano .env  # BOT_TOKEN va ADMIN_TELEGRAM_ID ni kiriting
+nano .env  # BOT_TOKEN va ADMIN_IDS ni kiriting
 
 # Docker bilan ishga tushirish
 docker-compose up -d --build
@@ -107,14 +107,14 @@ docker-compose logs -f bot
 |----------|-------------|---------|
 | `BOT_TOKEN` | Telegram Bot API Token | — (required) |
 | `DATABASE_URL` | PostgreSQL connection URL | localhost:5432/checkpoint_bot |
-| `ADMIN_TELEGRAM_ID` | Admin's Telegram user ID | 0 |
+| `ADMIN_IDS` | Admin's Telegram user ID | 0 |
 | `DEFAULT_RADIUS` | Default checkpoint radius (m) | 500 |
 
 ### Admin Telegram ID ni qanday bilish?
 
 1. [@userinfobot](https://t.me/userinfobot) ga `/start` yuboring
 2. Bot sizning Telegram ID'ingizni ko'rsatadi
-3. Shu raqamni `.env` fayliga `ADMIN_TELEGRAM_ID` ga yozing
+3. Shu raqamni `.env` fayliga `ADMIN_IDS` ga yozing
 
 ## 📱 Bot menyu
 

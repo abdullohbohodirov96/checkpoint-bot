@@ -35,10 +35,10 @@ async def contact_admin(message: Message, state: FSMContext):
     """Admin bilan aloqa"""
     await state.clear()
 
-    if settings.ADMIN_TELEGRAM_ID:
+    if settings.admin_ids_list:
         text = (
             "📞 <b>Admin bilan aloqa</b>\n\n"
-            f"<a href='tg://user?id={settings.ADMIN_TELEGRAM_ID}'>Admin ga yozish</a>"
+            f"<a href='tg://user?id={settings.admin_ids_list[0]}'>Admin ga yozish</a>"
         )
     else:
         text = "⚠️ Admin hali sozlanmagan."
