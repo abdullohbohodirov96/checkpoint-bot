@@ -19,6 +19,7 @@ class NotificationService:
         self,
         checkpoint: Dict[str, Any],
         is_accepted: bool,
+        photo_id: str
     ) -> bool:
         if not self.channel_id:
             return False
@@ -37,33 +38,33 @@ class NotificationService:
             local_time = datetime.now(timezone.utc) + timedelta(hours=5)
             time_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        if is_accepted:
-            text = (
-                "✅ Yangi checkpoint\n"
-                f"Ishchi: {checkpoint.get('username', '?')}\n"
-                f"Telegram ID: {checkpoint.get('user_id', '?')}\n"
-                f"Obyekt: {checkpoint.get('object_name', '?')}\n"
-                f"Nima qilishga: {checkpoint.get('purpose', 'Nomalum')}\n"
-                f"Vaqt: {time_str}\n"
-                f"Koordinata: {checkpoint.get('latitude', 0):.6f}, {checkpoint.get('longitude', 0):.6f}\n"
-                "Status: Keldi"
-            )
+        raw_purpose = checkpoint.get('purpose', 'Nomalum')
+        if "Pelesos" in raw_purpose:
+            purpose_str = f"🧹 {raw_purpose}"
+        elif "Promifka" in raw_purpose:
+            purpose_str = f"💧 {raw_purpose}"
         else:
-            text = (
-                "❌ Noto'g'ri checkpoint\n"
-                f"Ishchi: {checkpoint.get('username', '?')}\n"
-                f"Telegram ID: {checkpoint.get('user_id', '?')}\n"
-                f"Tanlangan obyekt: {checkpoint.get('object_name', '?')}\n"
-                f"Nima qilishga: {checkpoint.get('purpose', 'Nomalum')}\n"
-                f"Vaqt: {time_str}\n"
-                f"Koordinata: {checkpoint.get('latitude', 0):.6f}, {checkpoint.get('longitude', 0):.6f}\n"
-                "Status: Manzilga kelmadi"
-            )
+            purpose_str = raw_purpose
+
+        header = "✅ Yangi checkpoint" if is_accepted else "❌ Noto'g'ri checkpoint"
+        status_str = "Keldi" if is_accepted else "Kelmadi"
+
+        text = (
+            f"{header}\n\n"
+            f"👤 Ishchi: {checkpoint.get('username', '?')}\n"
+            f"🆔 ID: {checkpoint.get('user_id', '?')}\n"
+            f"🏗 Obyekt: {checkpoint.get('object_name', '?')}\n"
+            f"{purpose_str}\n"
+            f"🕒 Vaqt: {time_str}\n"
+            f"📍 Koordinata: {checkpoint.get('latitude', 0):.6f}, {checkpoint.get('longitude', 0):.6f}\n"
+            f"📌 Status: {status_str}"
+        )
 
         try:
-            await self.bot.send_message(
+            await self.bot.send_photo(
                 chat_id=self.channel_id,
-                text=text,
+                photo=photo_id,
+                caption=text,
             )
             return True
         except Exception as e:

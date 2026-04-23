@@ -10,6 +10,7 @@ class CheckpointStates(StatesGroup):
     selecting_object = State()    # Obyektni tanlash
     waiting_purpose = State()     # Nima qilishga kelgani
     waiting_location = State()    # Lokatsiya kutish
+    waiting_photo = State()       # Rasm kutish
 
 
 class AdminAddObjectStates(StatesGroup):

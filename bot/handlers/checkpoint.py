@@ -3,7 +3,7 @@ Checkpoint qilish jarayoni handleri.
 """
 
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
 from bot.config import get_settings
@@ -93,12 +93,33 @@ async def purpose_selected(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(CheckpointStates.waiting_location, F.location)
-async def location_received(message: Message, state: FSMContext, bot: Bot):
+async def location_received(message: Message, state: FSMContext):
+    user_lat = message.location.latitude
+    user_lon = message.location.longitude
+
+    await state.update_data(
+        user_lat=user_lat,
+        user_lon=user_lon,
+    )
+
+    await message.answer(
+        "📸 Iltimos, obyektda ekanligingizni tasdiqlash uchun rasm yuboring:",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await state.set_state(CheckpointStates.waiting_photo)
+
+
+@router.message(CheckpointStates.waiting_photo, F.photo)
+async def photo_received(message: Message, state: FSMContext, bot: Bot):
+    photo_id = message.photo[-1].file_id
+
     data = await state.get_data()
     object_id = data.get("object_id")
     purpose = data.get("purpose", "Noma'lum")
+    user_lat = data.get("user_lat")
+    user_lon = data.get("user_lon")
 
-    if not object_id:
+    if not object_id or not user_lat or not user_lon:
         await message.answer(
             "❌ Xatolik. Qaytadan boshlang.",
             reply_markup=get_menu_kb(message.from_user.id),
@@ -118,10 +139,7 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
         full_name += f" {message.from_user.last_name}"
     username = f"@{message.from_user.username}" if message.from_user.username else full_name.strip()
 
-    user_lat = message.location.latitude
-    user_lon = message.location.longitude
     distance, is_accepted = checkpoint_service.verify_location(user_lat, user_lon, obj)
-
     status = "Keldi" if is_accepted else "Kelmadi"
 
     checkpoint = checkpoint_service.save_checkpoint(
@@ -153,14 +171,19 @@ async def location_received(message: Message, state: FSMContext, bot: Bot):
             f"🛠 Maqsad: {purpose}\n"
             f"📏 Sizning masofangiz: {distance:.0f} m\n"
             f"📏 Ruxsat etilgan: {obj.get('radius', 500)} m\n\n"
-            "Objektga yaqinroq borib qayta urinib ko'ring.",
+            "Obyektga yaqinroq borib qayta urinib ko'ring.",
             parse_mode="HTML",
             reply_markup=menu_kb,
         )
         await message.answer("🔄 Qayta urinasizmi?", reply_markup=retry_kb())
 
-    await notification_service.notify_checkpoint(checkpoint, is_accepted)
+    await notification_service.notify_checkpoint(checkpoint, is_accepted, photo_id)
     await state.clear()
+
+
+@router.message(CheckpointStates.waiting_photo)
+async def invalid_photo(message: Message):
+    await message.answer("⚠️ Iltimos, faqat rasm yuboring!")
 
 
 @router.callback_query(F.data == "retry_checkpoint")

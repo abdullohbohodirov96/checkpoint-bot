@@ -65,8 +65,8 @@ def objects_inline_kb(objects: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
 def purpose_inline_kb() -> InlineKeyboardMarkup:
     """Nima qilishga kelganligini tanlash"""
     buttons = [
-        [InlineKeyboardButton(text="Pelesos qilishga", callback_data="purpose:pelesos")],
-        [InlineKeyboardButton(text="Promifka qilishga", callback_data="purpose:promifka")],
+        [InlineKeyboardButton(text="🧹 Pelesos qilishga", callback_data="purpose:pelesos")],
+        [InlineKeyboardButton(text="💧 Promifka qilishga", callback_data="purpose:promifka")],
         [InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cancel_checkpoint")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
