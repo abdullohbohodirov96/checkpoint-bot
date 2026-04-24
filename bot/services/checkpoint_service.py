@@ -49,7 +49,7 @@ class CheckpointService:
         user_longitude: float,
         status: str,
         purpose: str,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Checkpoint qaydini saqlash"""
         data = {
             "user_id": user_id,
@@ -60,11 +60,14 @@ class CheckpointService:
             "status": status,
             "purpose": purpose,
         }
-        if not self.sb: return None
+        if not self.sb:
+            print("❌ [DEBUG] Supabase client None — insert qilolmadim")
+            return None
         try:
+            print(f"▶️ [DEBUG] Checkpoint payload: {data}")
             res = self.sb.table("checkpoints").insert(data).execute()
             print(f"✅ [DEBUG] CHECKPOINT INSERT success: {res.data}")
-            return res.data[0] if res.data else data
+            return res.data[0] if res.data else None
         except Exception as e:
             print(f"❌ [DEBUG] CHECKPOINT INSERT error: {e}")
             return None
@@ -79,9 +82,11 @@ class CheckpointService:
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """Foydalanuvchi checkpoint tarixini olish"""
-        if not self.sb: return []
+        if not self.sb:
+            print("❌ [DEBUG] Supabase client None — history olishda")
+            return []
         try:
-            print(f"▶️ [DEBUG] SQL: select * from checkpoints where user_id = {user_id} order by created_at desc limit {limit}")
+            print(f"▶️ [DEBUG] get_user_history: user_id={user_id}, limit={limit}")
             res = self.sb.table("checkpoints")\
                 .select("*")\
                 .eq("user_id", user_id)\
@@ -89,10 +94,10 @@ class CheckpointService:
                 .limit(limit)\
                 .execute()
             rows_count = len(res.data) if res.data else 0
-            print(f"✅ [DEBUG] Olingan rowlar soni: {rows_count}")
-            return res.data
+            print(f"✅ [DEBUG] get_user_history success: {rows_count} rows")
+            return res.data if res.data else []
         except Exception as e:
-            print(f"❌ [DEBUG] Query Error: {e}")
+            print(f"❌ [DEBUG] get_user_history error: {e}")
             return []
 
     # ──────────────────────────────────────────
@@ -101,22 +106,52 @@ class CheckpointService:
 
     def get_all_history(
         self,
-        limit: int = 10,
+        limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """Barcha checkpoint tarixini olish (admin uchun)"""
-        if not self.sb: return []
+        if not self.sb:
+            print("❌ [DEBUG] Supabase client None — all history olishda")
+            return []
         try:
-            print(f"▶️ [DEBUG] SQL: select * from checkpoints order by created_at desc limit {limit}")
+            print(f"▶️ [DEBUG] get_all_history: limit={limit}")
             res = self.sb.table("checkpoints")\
                 .select("*")\
                 .order("created_at", desc=True)\
                 .limit(limit)\
                 .execute()
             rows_count = len(res.data) if res.data else 0
-            print(f"✅ [DEBUG] Olingan rowlar soni: {rows_count}")
-            return res.data
+            print(f"✅ [DEBUG] get_all_history success: {rows_count} rows")
+            return res.data if res.data else []
         except Exception as e:
-            print(f"❌ [DEBUG] Query Error: {e}")
+            print(f"❌ [DEBUG] get_all_history error: {e}")
+            return []
+
+    # ──────────────────────────────────────────
+    # ADMIN — LOCATION BO'YICHA TARIX
+    # ──────────────────────────────────────────
+
+    def get_history_by_object(
+        self,
+        object_name: str,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Obyekt nomi bo'yicha checkpoint tarixini olish"""
+        if not self.sb:
+            print("❌ [DEBUG] Supabase client None — history by object olishda")
+            return []
+        try:
+            print(f"▶️ [DEBUG] get_history_by_object: object_name='{object_name}', limit={limit}")
+            res = self.sb.table("checkpoints")\
+                .select("*")\
+                .eq("object_name", object_name)\
+                .order("created_at", desc=True)\
+                .limit(limit)\
+                .execute()
+            rows_count = len(res.data) if res.data else 0
+            print(f"✅ [DEBUG] get_history_by_object success: {rows_count} rows")
+            return res.data if res.data else []
+        except Exception as e:
+            print(f"❌ [DEBUG] get_history_by_object error: {e}")
             return []
 
     # ──────────────────────────────────────────
@@ -125,13 +160,17 @@ class CheckpointService:
 
     def get_all_objects(self) -> Optional[List[Dict[str, Any]]]:
         """Barcha obyektlarni olish. Xato bo'lsa None qaytaradi."""
+        if not self.sb:
+            print("❌ [DEBUG] Supabase client None — objects olishda")
+            return None
         try:
             print("▶️ [DEBUG] SELECT from 'objects' table...")
             res = self.sb.table("objects").select("*").order("name").execute()
-            print(f"✅ [DEBUG] SELECT success: {len(res.data) if res.data else 0} talab yozildi.")
+            count = len(res.data) if res.data else 0
+            print(f"✅ [DEBUG] objects SELECT success: {count} rows")
             return res.data
         except Exception as e:
-            print(f"❌ Obyektlarni olishda xato: {e}")
+            print(f"❌ [DEBUG] objects SELECT error: {e}")
             return None
 
     def get_object_by_id(self, object_id: int) -> Optional[Dict[str, Any]]:
@@ -149,7 +188,7 @@ class CheckpointService:
         latitude: float,
         longitude: float,
         radius: int = 500,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Yangi obyekt qo'shish"""
         data = {
             "name": name,
@@ -161,7 +200,7 @@ class CheckpointService:
         try:
             print(f"▶️ [DEBUG] INSERT into 'objects' table: {data}")
             res = self.sb.table("objects").insert(data).execute()
-            print(f"✅ [DEBUG] INSERT success: {res}")
+            print(f"✅ [DEBUG] INSERT success: {res.data}")
             return res.data[0] if res.data else None
         except Exception as e:
             print(f"❌ [DEBUG] INSERT xatolik: {e}")

@@ -19,7 +19,6 @@ from typing import List, Dict, Any
 def admin_menu_kb() -> ReplyKeyboardMarkup:
     """
     Admin uchun doimiy menyu.
-    7 ta tugma — hammasi reply keyboard.
     """
     keyboard = [
         [KeyboardButton(text="📍 Checkpoint qilish")],
@@ -71,6 +70,40 @@ def confirm_delete_kb(object_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="❌ Bekor qilish", callback_data="go_main_menu"),
         ],
     ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+# ──────────────────────────────────────────────────
+# ADMIN TARIX MODE TANLASH (Location / General)
+# ──────────────────────────────────────────────────
+
+def admin_history_mode_kb() -> InlineKeyboardMarkup:
+    """Admin tarix rejimini tanlash"""
+    buttons = [
+        [InlineKeyboardButton(text="📍 Location bo'yicha", callback_data="admin:history_mode:location")],
+        [InlineKeyboardButton(text="🌐 General", callback_data="admin:history_mode:general")],
+        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data="go_main_menu")],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+# ──────────────────────────────────────────────────
+# ADMIN TARIX — MANZIL TANLASH
+# ──────────────────────────────────────────────────
+
+def admin_history_objects_kb(objects: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """Admin tarix uchun manzil tanlash"""
+    buttons = []
+    for obj in objects:
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"🏗 {obj.get('name', '?')}",
+                callback_data=f"admin:history_obj:{obj.get('name', '?')}",
+            )
+        ])
+    buttons.append([
+        InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin:history_back"),
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 

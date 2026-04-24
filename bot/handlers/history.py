@@ -19,15 +19,16 @@ PER_PAGE = 10
 
 @router.message(F.text == "📋 Tarix")
 async def show_history(message: Message, state: FSMContext):
-    print(f"▶️ [DEBUG] foydalanuvchi or admin bossa: 📋 Tarix. User: {message.from_user.id}")
+    user_id = message.from_user.id
+    print(f"▶️ [DEBUG] 📋 Tarix bosildi. User: {user_id}")
     await state.clear()
 
-    checkpoints = checkpoint_service.get_user_history(message.from_user.id, limit=50)
+    checkpoints = checkpoint_service.get_user_history(user_id, limit=50)
+    print(f"▶️ [DEBUG] User history rows: {len(checkpoints)}")
 
     if not checkpoints:
         await message.answer(
             "📋 Tarixingiz\n\nHozircha checkpoint yo'q.",
-            parse_mode="HTML",
         )
         return
 
@@ -64,6 +65,25 @@ async def history_page(callback: CallbackQuery):
     await callback.answer()
 
 
+def _format_time(created_at_str: str) -> str:
+    if not created_at_str:
+        return "?"
+    try:
+        dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+        local_time = dt + timedelta(hours=5)
+        return local_time.strftime("%d.%m.%Y %H:%M")
+    except:
+        return created_at_str
+
+
+def _format_purpose(raw_purpose: str) -> str:
+    if "Pelesos" in raw_purpose:
+        return f"🧹 Ish turi: {raw_purpose}"
+    elif "Promifka" in raw_purpose:
+        return f"💧 Ish turi: {raw_purpose}"
+    return raw_purpose
+
+
 def _format_history(checkpoints, page: int, total: int) -> str:
     text = f"📋 Tarixingiz ({total} ta)\n\n"
 
@@ -72,32 +92,14 @@ def _format_history(checkpoints, page: int, total: int) -> str:
     page_data = checkpoints[start_idx:end_idx]
 
     for i, cp in enumerate(page_data, start=start_idx + 1):
-        created_at_str = cp.get("created_at")
-        if created_at_str:
-            try:
-                dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                local_time = dt + timedelta(hours=5)
-                time_str = local_time.strftime("%d.%m.%Y %H:%M")
-            except:
-                time_str = created_at_str
-        else:
-            time_str = "?"
-
+        time_str = _format_time(cp.get("created_at"))
+        purpose = _format_purpose(cp.get("purpose", "Nomalum"))
         status_icon = "✅" if cp.get("status") == "Keldi" else "❌"
-        obj_name = cp.get("object_name", "?")
-        
-        raw_purpose = cp.get('purpose', 'Nomalum')
-        if "Pelesos" in raw_purpose:
-            purpose_str = f"🧹 {raw_purpose}"
-        elif "Promifka" in raw_purpose:
-            purpose_str = f"💧 {raw_purpose}"
-        else:
-            purpose_str = raw_purpose
 
         text += (
-            f"{i}. 🏗 Obyekt: <b>{obj_name}</b>\n"
+            f"{i}. 🏗 Obyekt: <b>{cp.get('object_name', '?')}</b>\n"
             f"   📌 Status: {cp.get('status', '?')} {status_icon}\n"
-            f"   {purpose_str}\n"
+            f"   {purpose}\n"
             f"   🕒 Vaqt: {time_str}\n\n"
         )
 
