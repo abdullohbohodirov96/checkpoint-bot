@@ -73,6 +73,7 @@ async def list_objects(message: Message, state: FSMContext):
     text = "🏗 <b>Obyektlar ro'yxati</b>\n\n"
     for i, obj in enumerate(objects, 1):
         last_checkpoints = checkpoint_service.get_history_by_object(obj['name'], limit=1)
+        total_count = checkpoint_service.get_checkpoints_count_by_object(obj['name'])
         checkpoint_info = ""
         
         if last_checkpoints:
@@ -90,6 +91,8 @@ async def list_objects(message: Message, state: FSMContext):
             )
         else:
             checkpoint_info = "   🕒 Oxirgi checkpoint: Yo'q\n"
+
+        checkpoint_info += f"   🔢 Jami checkpointlar: {total_count} ta\n"
 
         text += (
             f"{i}. <b>{obj['name']}</b>\n"

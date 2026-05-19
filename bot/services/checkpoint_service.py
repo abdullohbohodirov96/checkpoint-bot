@@ -154,6 +154,17 @@ class CheckpointService:
             print(f"❌ [DEBUG] get_history_by_object error: {e}")
             return []
 
+    def get_checkpoints_count_by_object(self, object_name: str) -> int:
+        """Obyekt bo'yicha qilingan jami checkpointlar sonini olish"""
+        if not self.sb:
+            return 0
+        try:
+            res = self.sb.table("checkpoints").select("id", count="exact").eq("object_name", object_name).execute()
+            return res.count if res.count is not None else len(res.data)
+        except Exception as e:
+            print(f"❌ [DEBUG] get_checkpoints_count_by_object error: {e}")
+            return 0
+
     # ──────────────────────────────────────────
     # OBYEKTLAR
     # ──────────────────────────────────────────
