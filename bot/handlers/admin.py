@@ -72,10 +72,30 @@ async def list_objects(message: Message, state: FSMContext):
 
     text = "🏗 <b>Obyektlar ro'yxati</b>\n\n"
     for i, obj in enumerate(objects, 1):
+        last_checkpoints = checkpoint_service.get_history_by_object(obj['name'], limit=1)
+        checkpoint_info = ""
+        
+        if last_checkpoints:
+            cp = last_checkpoints[0]
+            time_str = _format_time(cp.get("created_at"))
+            raw_purpose = cp.get("purpose", "Nomalum")
+            
+            purpose_formatted = _format_purpose(raw_purpose)
+            if "Ish turi:" not in purpose_formatted:
+                purpose_formatted = f"🛠 Ish turi: {purpose_formatted}"
+                
+            checkpoint_info = (
+                f"   🕒 Oxirgi checkpoint: {time_str}\n"
+                f"   {purpose_formatted}\n"
+            )
+        else:
+            checkpoint_info = "   🕒 Oxirgi checkpoint: Yo'q\n"
+
         text += (
             f"{i}. <b>{obj['name']}</b>\n"
             f"   📍 {obj['latitude']}, {obj['longitude']}\n"
-            f"   📏 Radius: {obj.get('radius', 500)} m\n\n"
+            f"   📏 Radius: {obj.get('radius', 500)} m\n"
+            f"{checkpoint_info}\n"
         )
     text += f"Jami: {len(objects)} ta"
 
