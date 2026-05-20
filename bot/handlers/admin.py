@@ -92,7 +92,7 @@ async def list_objects(message: Message, state: FSMContext):
         else:
             checkpoint_info = "   🕒 Oxirgi checkpoint: Yo'q\n"
 
-        checkpoint_info += f"   🔢 Jami checkpointlar: {total_count} ta\n"
+        checkpoint_info += f"   🔢 Oxirgi 1 oydagi jami: {total_count} ta\n"
 
         text += (
             f"{i}. <b>{obj['name']}</b>\n"

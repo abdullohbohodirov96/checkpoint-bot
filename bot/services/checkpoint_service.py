@@ -4,6 +4,7 @@ Haversine formulasi orqali masofa hisoblash va supabase orqali saqlash.
 """
 
 from typing import Optional, List, Tuple, Dict, Any
+from datetime import datetime, timedelta, timezone
 from bot.utils.haversine import haversine
 from bot.database.db import get_supabase
 
@@ -155,11 +156,16 @@ class CheckpointService:
             return []
 
     def get_checkpoints_count_by_object(self, object_name: str) -> int:
-        """Obyekt bo'yicha qilingan jami checkpointlar sonini olish"""
+        """Obyekt bo'yicha qilingan oxirgi 1 oylik jami checkpointlar sonini olish"""
         if not self.sb:
             return 0
         try:
-            res = self.sb.table("checkpoints").select("id", count="exact").eq("object_name", object_name).execute()
+            one_month_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            res = self.sb.table("checkpoints")\
+                .select("id", count="exact")\
+                .eq("object_name", object_name)\
+                .gte("created_at", one_month_ago)\
+                .execute()
             return res.count if res.count is not None else len(res.data)
         except Exception as e:
             print(f"❌ [DEBUG] get_checkpoints_count_by_object error: {e}")
