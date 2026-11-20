@@ -21,11 +21,13 @@ from bot.services.fine_service import FineService, now_local, parse_date
 from bot.services.fine_scheduler import (
     MONTHS,
     admin_report_text,
+    fine_reasons,
     fmt,
     fmt_period,
     money,
     rules_text,
     safe_send,
+    send_long,
 )
 
 settings = get_settings()
@@ -63,17 +65,19 @@ async def my_fines(message: Message, state: FSMContext):
     fines = svc.month_fines(today.year, today.month, user_id=message.from_user.id)
     text = f"💰 <b>Jarimalarim — {MONTHS[today.month - 1]} {today.year}</b>\n\n"
     if fines:
+        reasons = await fine_reasons(svc, fines, today)
         for f in fines:
+            text += f"🏗 <b>{html.escape(f['object_name'])}</b> — {money(f['amount'])}\n"
             text += (
-                f"• {html.escape(f['object_name'])} "
-                f"({fmt_period(parse_date(f['period_start']), parse_date(f['period_end']))}) — {money(f['amount'])}\n"
-            )
+                reasons.get(f["id"])
+                or f"❌ {fmt_period(parse_date(f['period_start']), parse_date(f['period_end']))} — checkpoint qilinmadi."
+            ) + "\n\n"
         total = sum(float(f["amount"]) for f in fines)
-        text += f"\nJami: {len(fines)} ta, <b>{money(total)}</b>\n\n"
+        text += f"Jami: {len(fines)} ta, <b>{money(total)}</b>\n\n"
     else:
         text += "Bu oy jarimangiz yo'q ✅\n\n"
     text += rules_text()
-    await message.answer(text, parse_mode="HTML")
+    await send_long(message.bot, message.chat.id, text)
 
 
 # ──────────────────────────────────────────
@@ -96,14 +100,16 @@ async def admin_fines(message: Message, state: FSMContext):
 
     today = now_local().date()
     fines = svc.month_fines(today.year, today.month)
-    text = admin_report_text(fines, today).replace("Jarimalar hisoboti", "Joriy oy jarimalari")
+    reasons = await fine_reasons(svc, fines, today)
+    text = admin_report_text(fines, today, reasons).replace("Jarimalar hisoboti", "Joriy oy jarimalari")
     missing = [o["name"] for o in svc.objects() if not o.get("start_date")]
     if missing:
         text += (
             f"\n\n❓ Boshlanish sanasi kiritilmagan obyektlar: {len(missing)} ta "
             "— ular bo'yicha jarima hisoblanmayapti."
         )
-    await message.answer(text[:4000], parse_mode="HTML", reply_markup=fines_menu_kb())
+    await send_long(message.bot, message.chat.id, text)
+    await message.answer("⚙️ Sozlash:", reply_markup=fines_menu_kb())
 
 
 # ──────────────────────────────────────────

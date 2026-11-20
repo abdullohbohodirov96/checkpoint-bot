@@ -83,6 +83,49 @@ def announcement_text() -> str:
     )
 
 
+async def db(fn, *args):
+    """Supabase so'rovlari sinxron — botni to'xtatib qo'ymaslik uchun alohida oqimda bajaramiz."""
+    return await asyncio.to_thread(fn, *args)
+
+
+def reason_text(fine: Dict[str, Any], ctx: Dict[str, Any], today: date) -> str:
+    """Jarima sababi: qaysi davrda borilmagan, oxirgi va keyingi checkpoint qachon bo'lgan."""
+    n = settings.FINE_PERIOD_DAYS
+    ps, pe = parse_date(fine["period_start"]), parse_date(fine["period_end"])
+    last, nxt = ctx.get("last"), ctx.get("next")
+    lines = [f"❌ {fmt_period(ps, pe)} — {n} kun ichida bir marta ham checkpoint qilinmadi."]
+    if last:
+        lines.append(f"🕒 Bundan oldingi oxirgi checkpoint: {fmt(last)}")
+    else:
+        lines.append("🕒 Bundan oldin bu obyektda umuman checkpoint bo'lmagan.")
+    since = last or ps
+    if nxt:
+        who = f" ({html.escape(ctx['next_user'])})" if ctx.get("next_user") else ""
+        lines.append(
+            f"✅ Keyin {fmt(nxt)} da borilgan{who} — orada {(nxt - since).days} kun o'tgan (ruxsat etilgani {n} kun)."
+        )
+    else:
+        lines.append(f"⏳ Shu kungacha hali borilmagan — {(today - since).days} kun bo'ldi (ruxsat etilgani {n} kun).")
+    return "\n".join(lines)
+
+
+async def fine_reasons(svc: FineService, fines: List[Dict[str, Any]], today: date) -> Dict[Any, str]:
+    reasons: Dict[Any, str] = {}
+    for f in fines:
+        try:
+            ctx = await db(
+                svc.fine_context, f["object_name"], parse_date(f["period_start"]), parse_date(f["period_end"])
+            )
+            reasons[f["id"]] = reason_text(f, ctx, today)
+        except Exception as e:
+            logger.warning(f"[FINES] Sabab hisoblanmadi (jarima {f.get('id')}): {e}")
+    return reasons
+
+
+def _indent(text: str, pad: str = "     ") -> str:
+    return "\n".join(pad + line for line in text.split("\n"))
+
+
 async def safe_send(bot: Bot, chat_id: int, text: str, **kwargs) -> bool:
     try:
         await bot.send_message(chat_id=chat_id, text=text, **kwargs)
@@ -114,7 +157,7 @@ async def announce_launch(bot: Bot, svc: FineService) -> None:
     from bot.handlers.start import get_menu_kb
 
     text = announcement_text()
-    recipients = set(svc.known_workers()) | set(settings.admin_ids_list)
+    recipients = set(await db(svc.known_workers)) | set(settings.admin_ids_list)
     sent = 0
     for uid in recipients:
         # Menyu ham yangilanadi — «💰 Jarimalarim» tugmasi paydo bo'ladi
@@ -137,7 +180,7 @@ async def ask_start_date(bot: Bot, svc: FineService, obj: Dict[str, Any]) -> boo
             created = datetime.fromisoformat(str(obj["created_at"]).replace("Z", "+00:00")).date()
         except ValueError:
             created = None
-    first = svc.first_checkpoint_date(obj["name"])
+    first = await db(svc.first_checkpoint_date, obj["name"])
     text = (
         f"🗓 <b>{html.escape(obj['name'])}</b> obyekti qaysi kundan boshlangan?\n\n"
         f"Jarima hisobi ({settings.FINE_PERIOD_DAYS} kunlik) shu kundan yuradi. "
@@ -151,7 +194,7 @@ async def ask_start_date(bot: Bot, svc: FineService, obj: Dict[str, Any]) -> boo
 
 async def ask_missing_start_dates(bot: Bot, svc: FineService) -> None:
     now_utc = datetime.now(timezone.utc)
-    for obj in svc.objects():
+    for obj in await db(svc.objects):
         if obj.get("start_date"):
             continue
         asked = obj.get("start_asked_at")
@@ -163,7 +206,7 @@ async def ask_missing_start_dates(bot: Bot, svc: FineService) -> None:
             except ValueError:
                 pass
         if await ask_start_date(bot, svc, obj):
-            svc.mark_asked(obj["id"])
+            await db(svc.mark_asked, obj["id"])
         await asyncio.sleep(0.05)
 
 
@@ -171,42 +214,44 @@ async def ask_missing_start_dates(bot: Bot, svc: FineService) -> None:
 # JARIMA YOZISH
 # ──────────────────────────────────────────
 
-async def notify_fine(bot: Bot, svc: FineService, fine: Dict[str, Any]) -> None:
+async def notify_fine(bot: Bot, svc: FineService, fine: Dict[str, Any], today: date) -> None:
     ps, pe = parse_date(fine["period_start"]), parse_date(fine["period_end"])
     name = html.escape(fine["object_name"])
     period = fmt_period(ps, pe)
     amount = money(fine["amount"])
+    reason = (await fine_reasons(svc, [fine], today)).get(fine["id"]) or (
+        f"❌ {period} — {settings.FINE_PERIOD_DAYS} kun ichida bir marta ham checkpoint qilinmadi."
+    )
 
     if fine.get("user_id"):
         await safe_send(
             bot, fine["user_id"],
             "💸 <b>Sizga jarima yozildi</b>\n\n"
             f"🏗 Obyekt: <b>{name}</b>\n"
-            f"📅 Davr: {period}\n"
-            f"❌ Bu {settings.FINE_PERIOD_DAYS} kun ichida obyektda bir marta ham checkpoint qilinmadi.\n"
             f"💰 Jarima: <b>{amount}</b>\n\n"
+            f"<b>Sababi:</b>\n{reason}\n\n"
             f"Savol bo'lsa admin: @{settings.FINE_ADMIN_USERNAME}",
         )
         who = f"👤 Ishchi: {html.escape(fine.get('username') or str(fine['user_id']))}"
         workers = None
     else:
         who = "👤 Ishchi: <b>belgilanmagan</b> — bu obyektda hali hech kim checkpoint qilmagan.\nKimga yozilsin? Pastdan tanlang:"
-        workers = svc.known_workers()
+        workers = await db(svc.known_workers)
 
     await safe_send(
         bot, settings.FINE_ADMIN_ID,
         "💸 <b>Yangi jarima</b>\n\n"
         f"🏗 Obyekt: <b>{name}</b>\n"
-        f"📅 Davr: {period} — checkpoint yo'q\n"
         f"💰 Jarima: <b>{amount}</b>\n"
-        f"{who}",
+        f"{who}\n\n"
+        f"<b>Sababi:</b>\n{reason}",
         reply_markup=fine_admin_kb(fine["id"], workers),
     )
 
 
 async def process_fines(bot: Bot, svc: FineService, launch: date, today: date) -> int:
     created = 0
-    for obj in svc.objects():
+    for obj in await db(svc.objects):
         start = parse_date(obj.get("start_date"))
         if not start:
             continue
@@ -215,13 +260,13 @@ async def process_fines(bot: Bot, svc: FineService, launch: date, today: date) -
                 start, launch, parse_date(obj.get("fine_checked_until")), today, settings.FINE_PERIOD_DAYS
             )
             for ps, pe in periods:
-                if not svc.has_checkpoint(obj["name"], ps, pe) and not svc.fine_exists(obj["id"], ps):
-                    fine = svc.create_fine(obj, ps, pe, svc.last_worker(obj["name"]), settings.FINE_AMOUNT)
-                    svc.set_checked_until(obj["id"], pe)
+                if not await db(svc.has_checkpoint, obj["name"], ps, pe) and not await db(svc.fine_exists, obj["id"], ps):
+                    fine = await db(svc.create_fine, obj, ps, pe, await db(svc.last_worker, obj["name"]), settings.FINE_AMOUNT)
+                    await db(svc.set_checked_until, obj["id"], pe)
                     created += 1
-                    await notify_fine(bot, svc, fine)
+                    await notify_fine(bot, svc, fine, today)
                 else:
-                    svc.set_checked_until(obj["id"], pe)
+                    await db(svc.set_checked_until, obj["id"], pe)
         except Exception as e:
             # Keyingi tekshiruvda qayta uriniladi
             logger.error(f"[FINES] {obj.get('name')} bo'yicha xato: {e}")
@@ -233,7 +278,7 @@ async def process_fines(bot: Bot, svc: FineService, launch: date, today: date) -
 # ──────────────────────────────────────────
 
 async def send_warnings(bot: Bot, svc: FineService, launch: date, today: date) -> None:
-    for obj in svc.objects():
+    for obj in await db(svc.objects):
         start = parse_date(obj.get("start_date"))
         if not start:
             continue
@@ -246,9 +291,9 @@ async def send_warnings(bot: Bot, svc: FineService, launch: date, today: date) -
                 continue
             if parse_date(obj.get("fine_warned_period")) == ps:
                 continue
-            if svc.has_checkpoint(obj["name"], ps, pe):
+            if await db(svc.has_checkpoint, obj["name"], ps, pe):
                 continue
-            worker = svc.last_worker(obj["name"])
+            worker = await db(svc.last_worker, obj["name"])
             if worker:
                 last_day = pe - timedelta(days=1)
                 await safe_send(
@@ -258,7 +303,7 @@ async def send_warnings(bot: Bot, svc: FineService, launch: date, today: date) -
                     f"📅 Oxirgi kun: <b>{fmt(last_day)}</b>\n"
                     f"Shu kungacha checkpoint qilmasangiz <b>{settings.FINE_AMOUNT}$ jarima</b> yoziladi.",
                 )
-            svc.set_warned(obj["id"], ps)
+            await db(svc.set_warned, obj["id"], ps)
         except Exception as e:
             logger.error(f"[FINES] Eslatma xatosi ({obj.get('name')}): {e}")
 
@@ -278,7 +323,10 @@ def report_target(today: date, hour: int) -> Optional[date]:
     return None
 
 
-def admin_report_text(fines: List[Dict[str, Any]], month_end: date) -> str:
+def admin_report_text(
+    fines: List[Dict[str, Any]], month_end: date, reasons: Optional[Dict[Any, str]] = None
+) -> str:
+    reasons = reasons or {}
     title = f"📊 <b>Jarimalar hisoboti — {MONTHS[month_end.month - 1]} {month_end.year}</b>\n\n"
     if not fines:
         return title + "Bu oy jarima yozilmadi ✅"
@@ -293,24 +341,32 @@ def admin_report_text(fines: List[Dict[str, Any]], month_end: date) -> str:
         who = html.escape(items[0].get("username") or str(uid)) if uid else "Ishchi belgilanmagan"
         text += f"👤 <b>{who}</b> — {len(items)} ta, <b>{money(subtotal)}</b>\n"
         for i in items:
-            text += f"   • {html.escape(i['object_name'])} ({fmt_period(parse_date(i['period_start']), parse_date(i['period_end']))})\n"
+            text += f"   • <b>{html.escape(i['object_name'])}</b> — {money(i['amount'])}\n"
+            text += _indent(
+                reasons.get(i["id"])
+                or f"❌ {fmt_period(parse_date(i['period_start']), parse_date(i['period_end']))} — checkpoint qilinmadi."
+            ) + "\n"
         text += "\n"
     text += f"Jami: {len(fines)} ta jarima, <b>{money(total)}</b>"
     return text
 
 
-def worker_report_text(fines: List[Dict[str, Any]], month_end: date) -> str:
+def worker_report_text(
+    fines: List[Dict[str, Any]], month_end: date, reasons: Optional[Dict[Any, str]] = None
+) -> str:
+    reasons = reasons or {}
     title = f"📊 <b>{MONTHS[month_end.month - 1]} {month_end.year} — jarimalar hisoboti</b>\n\n"
     if not fines:
         return title + "Sizda bu oy jarima yo'q ✅ Rahmat!"
     text = title
     for i in fines:
+        text += f"🏗 <b>{html.escape(i['object_name'])}</b> — {money(i['amount'])}\n"
         text += (
-            f"• {html.escape(i['object_name'])} "
-            f"({fmt_period(parse_date(i['period_start']), parse_date(i['period_end']))}) — {money(i['amount'])}\n"
-        )
+            reasons.get(i["id"])
+            or f"❌ {fmt_period(parse_date(i['period_start']), parse_date(i['period_end']))} — checkpoint qilinmadi."
+        ) + "\n\n"
     total = sum(float(i["amount"]) for i in fines)
-    text += f"\nJami: {len(fines)} ta jarima, <b>{money(total)}</b>\n"
+    text += f"Jami: {len(fines)} ta jarima, <b>{money(total)}</b>\n"
     text += f"Savol bo'lsa admin: @{settings.FINE_ADMIN_USERNAME}"
     return text
 
@@ -320,12 +376,16 @@ async def monthly_report(bot: Bot, svc: FineService, launch: date, today: date, 
     if not month_end or month_end < launch:
         return False
     key = f"fines_report:{month_end.strftime('%Y-%m')}"
-    if svc.get_setting(key):
+    if await db(svc.get_setting, key):
         return False
-    svc.set_setting(key, now_local().isoformat())
 
-    fines = svc.unreported_fines(month_end)
-    admin_text = admin_report_text(fines, month_end)
+    # Avval hamma ma'lumotni yig'amiz — xato bo'lsa keyingi tekshiruvda qayta uriniladi
+    fines = await db(svc.unreported_fines, month_end)
+    reasons = await fine_reasons(svc, fines, today)
+    workers = await db(svc.known_workers)
+    await db(svc.set_setting, key, now_local().isoformat())
+
+    admin_text = admin_report_text(fines, month_end, reasons)
     for admin_id in settings.admin_ids_list:
         await send_long(bot, admin_id, admin_text)
 
@@ -333,14 +393,13 @@ async def monthly_report(bot: Bot, svc: FineService, launch: date, today: date, 
     for f in fines:
         if f.get("user_id"):
             by_worker.setdefault(f["user_id"], []).append(f)
-    recipients = set(svc.known_workers()) | set(by_worker)
-    for uid in recipients:
+    for uid in set(workers) | set(by_worker):
         if uid in settings.admin_ids_list and uid not in by_worker:
             continue
-        await send_long(bot, uid, worker_report_text(by_worker.get(uid, []), month_end))
+        await send_long(bot, uid, worker_report_text(by_worker.get(uid, []), month_end, reasons))
         await asyncio.sleep(0.05)
 
-    svc.mark_reported([f["id"] for f in fines])
+    await db(svc.mark_reported, [f["id"] for f in fines])
     return True
 
 
@@ -357,8 +416,8 @@ async def tick(bot: Bot, now: Optional[datetime] = None) -> bool:
     now = now or now_local()
     today = now.date()
 
-    svc = FineService()
-    if not svc.schema_ok():
+    svc = await db(FineService)
+    if not await db(svc.schema_ok):
         if not _schema_warned:
             _schema_warned = True
             for admin_id in settings.admin_ids_list:
@@ -373,10 +432,10 @@ async def tick(bot: Bot, now: Optional[datetime] = None) -> bool:
     if not DAY_START_HOUR <= now.hour < DAY_END_HOUR:
         return True
 
-    launch = svc.launch_date()
+    launch = await db(svc.launch_date)
     if not launch:
         launch = today
-        svc.set_setting(LAUNCH_KEY, today.isoformat())
+        await db(svc.set_setting, LAUNCH_KEY, today.isoformat())
         await announce_launch(bot, svc)
 
     await ask_missing_start_dates(bot, svc)

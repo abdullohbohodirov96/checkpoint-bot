@@ -33,7 +33,7 @@ def parse_date(value: Any) -> Optional[date]:
 
 def day_start_utc_iso(d: date) -> str:
     """Toshkent vaqti bilan kun boshlanishini UTC ISO ko'rinishida qaytaradi."""
-    return datetime(d.year, d.month, d.day, tzinfo=TASHKENT).astimezone(timezone.utc).isoformat()
+    return datetime(d.year, d.month, d.day, tzinfo=TASHKENT).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def effective_start(start: date, launch: date) -> date:
@@ -177,6 +177,28 @@ class FineService:
         row = res.data[0]
         return row["user_id"], row.get("username") or str(row["user_id"])
 
+    def fine_context(self, object_name: str, ps: date, pe: date) -> Dict[str, Any]:
+        """Jarima sababi uchun: davrdan oldingi oxirgi va davrdan keyingi birinchi qabul qilingan checkpoint."""
+        def to_local(row) -> Optional[date]:
+            try:
+                return datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")).astimezone(TASHKENT).date()
+            except Exception:
+                return None
+
+        before = self.sb.table("checkpoints").select("created_at,username")\
+            .eq("object_name", object_name).eq("status", "Keldi")\
+            .lt("created_at", day_start_utc_iso(ps))\
+            .order("created_at", desc=True).limit(1).execute()
+        after = self.sb.table("checkpoints").select("created_at,username")\
+            .eq("object_name", object_name).eq("status", "Keldi")\
+            .gte("created_at", day_start_utc_iso(pe))\
+            .order("created_at", desc=False).limit(1).execute()
+        return {
+            "last": to_local(before.data[0]) if before.data else None,
+            "next": to_local(after.data[0]) if after.data else None,
+            "next_user": after.data[0].get("username") if after.data else None,
+        }
+
     def first_checkpoint_date(self, object_name: str) -> Optional[date]:
         res = self.sb.table("checkpoints").select("created_at")\
             .eq("object_name", object_name)\
@@ -229,11 +251,10 @@ class FineService:
         """Hali oylik hisobotga kirmagan, `until` kunigacha (shu kun ham) yozilgan faol jarimalar."""
         res = self.sb.table("fines").select("*")\
             .eq("status", "active")\
-            .eq("reported", False)\
             .lte("period_end", until.isoformat())\
             .order("period_end", desc=False)\
             .limit(1000).execute()
-        return res.data or []
+        return [f for f in (res.data or []) if not f.get("reported")]
 
     def mark_reported(self, fine_ids: List[int]) -> None:
         for fid in fine_ids:

@@ -167,7 +167,13 @@ async def scenario():
     assert len(fines) == 1 and fines[0]["object_name"] == "B" and fines[0]["user_id"] == 502 and fines[0]["amount"] == 50
     assert len([t for t in bot.to(502) if "jarima yozildi" in t]) == 1
     assert len([t for t in bot.to(admin) if "Yangi jarima" in t]) == 1
-    assert "20.11–26.11.2026" in bot.to(502)[0]
+    msg = bot.to(502)[0]
+    assert "20.11–26.11.2026" in msg and "Sababi" in msg
+    assert "oxirgi checkpoint: 11.11.2026" in msg and "hali borilmagan — 16 kun" in msg
+    assert "Sababi" in [t for t in bot.to(admin) if "Yangi jarima" in t][0]
+
+    # Ishchi kechikib bo'lsa ham boradi — oylik hisobotda sabab aniq ko'rinadi
+    cp(sb, 502, "@vali", "B", at(date(2026, 11, 29)))
 
     # Oy oxiri: 18:00 dan oldin yo'q, keyin hisobot — admin(lar)ga va ishchilarga, bir marta
     bot.sent.clear()
@@ -180,6 +186,10 @@ async def scenario():
     rep = [t for t in bot.to(admin) if "Jarimalar hisoboti" in t][0]
     assert "@vali" in rep and "Jami: 1 ta jarima, <b>50$</b>" in rep
     assert any("Jami: 1 ta jarima" in t for t in bot.to(502))
+    for text in (rep, [t for t in bot.to(502) if "Jami: 1 ta jarima" in t][0]):
+        assert "20.11–26.11.2026 — 7 kun ichida bir marta ham checkpoint qilinmadi" in text
+        assert "oxirgi checkpoint: 11.11.2026" in text
+        assert "Keyin 29.11.2026 da borilgan (@vali) — orada 18 kun o'tgan (ruxsat etilgani 7 kun)" in text
     assert any("jarima yo'q" in t for t in bot.to(501))
     assert fines[0]["reported"] is True
 
@@ -191,7 +201,6 @@ async def scenario():
                                 "fine_checked_until": None, "fine_warned_period": None}).execute()
     cp(sb, 501, "@ali", "A", at(date(2026, 11, 28)))
     cp(sb, 501, "@ali", "A", at(date(2026, 12, 5)))
-    cp(sb, 502, "@vali", "B", at(date(2026, 11, 29)))
     cp(sb, 502, "@vali", "B", at(date(2026, 12, 6)))
     bot.sent.clear()
     await fs.tick(bot, at(date(2026, 12, 8)))
