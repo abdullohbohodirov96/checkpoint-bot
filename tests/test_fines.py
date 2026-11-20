@@ -210,6 +210,27 @@ async def scenario():
     msg = [(t, k) for c, t, k in bot.sent if c == admin and "belgilanmagan" in t]
     assert len(msg) == 1 and len(msg[0][1]["reply_markup"].inline_keyboard) == 3  # 2 ishchi + bekor qilish
 
+    # Shaxsiy muddat: A ga 3 kun qo'yiladi — hisob o'sha kundan, eslatma 2 kun qolganda (bir marta), jarima 3 kundan keyin
+    svc.set_period_days(1, 3, date(2026, 12, 8))
+    assert svc.object_settings()[0] == {1: 3}
+    bot.sent.clear()
+    await fs.tick(bot, at(date(2026, 12, 8), 15))
+    assert not [t for t in bot.to(501) if "Eslatma" in t]
+    await fs.tick(bot, at(date(2026, 12, 9)))
+    await fs.tick(bot, at(date(2026, 12, 10)))
+    assert len([t for t in bot.to(501) if "Eslatma" in t and "3 kunlik" in t]) == 1
+    await fs.tick(bot, at(date(2026, 12, 11)))
+    a = [f for f in fines if f["object_name"] == "A"]
+    assert len(a) == 1 and (a[0]["period_start"], a[0]["period_end"]) == ("2026-12-08", "2026-12-11")
+    assert any("08.12–10.12.2026 — 3 kun ichida" in t for t in bot.to(501))
+    # B standart 7 kunda qoladi: 04.12–10.12 da (06.12) checkpoint bor — jarima yo'q
+    assert len([f for f in fines if f["object_name"] == "B"]) == 1
+    # Standartga qaytarish
+    svc.set_period_days(1, None, date(2026, 12, 11))
+    assert svc.object_settings()[0] == {}
+    await fs.tick(bot, at(date(2026, 12, 15)))
+    assert len([f for f in fines if f["object_name"] == "A"]) == 1
+
     # Bot bir necha kun o'chib yonganda: o'tgan oy hisoboti qayta yuborilmaydi
     assert not [t for _, t, _ in bot.sent if "hisoboti" in t]
     print("OK: barcha testlar o'tdi")

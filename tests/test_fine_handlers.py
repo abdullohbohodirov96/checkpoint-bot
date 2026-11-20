@@ -91,6 +91,27 @@ async def main():
     await h.start_dates_list(Cb(bot, ADMIN, "fstart:list"))
     await h.start_date_pick(Cb(bot, ADMIN, "fstart:pick:1"), bot)
 
+    # Obyekt muddati: tugma, qo'lda kiritish, standartga qaytarish
+    await h.period_days_ask(Cb(bot, ADMIN, "flimit:ask:1"))
+    c = Cb(bot, 501, "flimit:set:1:5")
+    await h.period_days_set(c)
+    assert svc.object_settings()[0] == {}
+    c = Cb(bot, ADMIN, "flimit:set:1:5")
+    await h.period_days_set(c)
+    assert svc.object_settings()[0] == {1: 5} and "5 kun" in c.message.out[0]
+    st = State()
+    await h.period_days_custom(Cb(bot, ADMIN, "flimit:custom:1"), st)
+    bad = Msg(bot, ADMIN, "0")
+    await h.period_days_entered(bad, st)
+    assert st.state is not None
+    ok = Msg(bot, ADMIN, "10")
+    await h.period_days_entered(ok, st)
+    assert svc.object_settings()[0] == {1: 10} and svc.object_settings()[1][1] == today
+    await h.start_dates_list(Cb(bot, ADMIN, "fstart:list"))
+    await h.start_date_options(Cb(bot, ADMIN, "fstart:dates:1"))
+    await h.period_days_set(Cb(bot, ADMIN, "flimit:set:1:0"))
+    assert svc.object_settings()[0] == {}
+
     # Jarimani ishchiga biriktirish va bekor qilish
     bot.sent.clear()
     await h.fine_assign(Cb(bot, ADMIN, f"fine:assign:{free['id']}:501"), bot)

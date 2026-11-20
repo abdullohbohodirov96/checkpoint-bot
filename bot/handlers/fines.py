@@ -14,6 +14,8 @@ from bot.config import get_settings
 from bot.states.states import FineStates
 from bot.keyboards.admin_kb import (
     fines_menu_kb,
+    object_fine_settings_kb,
+    period_days_kb,
     start_date_kb,
     start_dates_list_kb,
 )
@@ -130,9 +132,9 @@ async def start_dates_list(callback: CallbackQuery):
         await callback.answer("Obyektlar yo'q", show_alert=True)
         return
     await callback.message.answer(
-        "🗓 <b>Obyektlar boshlanish sanalari</b>\n\nO'zgartirish uchun obyektni tanlang:",
+        "🗓 <b>Obyektlar: boshlanish sanasi va muddat</b>\n\nO'zgartirish uchun obyektni tanlang:",
         parse_mode="HTML",
-        reply_markup=start_dates_list_kb(objects[:90]),
+        reply_markup=start_dates_list_kb(objects[:90], svc.object_settings()[0], settings.FINE_PERIOD_DAYS),
     )
     await callback.answer()
 
@@ -147,17 +149,113 @@ async def start_date_pick(callback: CallbackQuery, bot: Bot):
     if not obj:
         await callback.answer("❌ Obyekt topilmadi!", show_alert=True)
         return
-    first = svc.first_checkpoint_date(obj["name"])
-    created = parse_date(obj.get("created_at"))
     current = parse_date(obj.get("start_date"))
+    own_days = svc.object_settings()[0].get(obj["id"])
     await callback.message.answer(
-        f"🗓 <b>{html.escape(obj['name'])}</b>\n"
-        f"Hozirgi boshlanish sanasi: <b>{fmt(current) if current else 'kiritilmagan'}</b>\n\n"
-        "Yangi sanani tanlang:",
+        f"🏗 <b>{html.escape(obj['name'])}</b>\n"
+        f"🗓 Boshlanish sanasi: <b>{fmt(current) if current else 'kiritilmagan'}</b>\n"
+        f"⏱ Muddat: <b>{own_days or settings.FINE_PERIOD_DAYS} kun</b>"
+        f"{'' if own_days else ' (standart)'} — shuncha kunda kamida 1 marta checkpoint",
         parse_mode="HTML",
-        reply_markup=start_date_kb(obj["id"], created, first),
+        reply_markup=object_fine_settings_kb(obj["id"]),
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("fstart:dates:"))
+async def start_date_options(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔️ Ruxsat yo'q!", show_alert=True)
+        return
+    svc = _service()
+    obj = svc.get_object(int(callback.data.split(":")[2])) if svc else None
+    if not obj:
+        await callback.answer("❌ Obyekt topilmadi!", show_alert=True)
+        return
+    await callback.message.answer(
+        f"🗓 <b>{html.escape(obj['name'])}</b> — yangi boshlanish sanasini tanlang:",
+        parse_mode="HTML",
+        reply_markup=start_date_kb(obj["id"], parse_date(obj.get("created_at")), svc.first_checkpoint_date(obj["name"])),
+    )
+    await callback.answer()
+
+
+# ──────────────────────────────────────────
+# ADMIN — OBYEKT MUDDATI (KUN)
+# ──────────────────────────────────────────
+
+MAX_PERIOD_DAYS = 90
+
+
+async def _save_period_days(svc: FineService, object_id: int, days: int) -> str:
+    obj = svc.get_object(object_id)
+    if not obj:
+        return "❌ Obyekt topilmadi!"
+    today = now_local().date()
+    svc.set_period_days(object_id, days or None, today)
+    shown = days or settings.FINE_PERIOD_DAYS
+    return (
+        f"✅ <b>{html.escape(obj['name'])}</b> — muddat: <b>{shown} kun</b>{'' if days else ' (standart)'}\n"
+        f"Endi bu obyektda har {shown} kunda kamida 1 marta checkpoint bo'lishi kerak. "
+        f"Hisob bugundan ({fmt(today)}) qaytadan boshlanadi."
+    )
+
+
+@router.callback_query(F.data.startswith("flimit:ask:"))
+async def period_days_ask(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔️ Ruxsat yo'q!", show_alert=True)
+        return
+    object_id = int(callback.data.split(":")[2])
+    await callback.message.answer(
+        "⏱ Bu obyektda necha kunda kamida 1 marta checkpoint bo'lishi kerak?",
+        reply_markup=period_days_kb(object_id, settings.FINE_PERIOD_DAYS),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("flimit:set:"))
+async def period_days_set(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔️ Ruxsat yo'q!", show_alert=True)
+        return
+    svc = _service()
+    if not svc:
+        await callback.answer(NOT_READY, show_alert=True)
+        return
+    _, _, object_id, days = callback.data.split(":")
+    await callback.message.edit_text(await _save_period_days(svc, int(object_id), int(days)), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("flimit:custom:"))
+async def period_days_custom(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔️ Ruxsat yo'q!", show_alert=True)
+        return
+    await state.set_state(FineStates.entering_period_days)
+    await state.update_data(fine_object_id=int(callback.data.split(":")[2]))
+    await callback.message.answer(f"✍️ Kunlar sonini kiriting (1–{MAX_PERIOD_DAYS}). Masalan: <code>10</code>", parse_mode="HTML")
+    await callback.answer()
+
+
+@router.message(FineStates.entering_period_days)
+async def period_days_entered(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    raw = (message.text or "").strip()
+    if not raw.isdigit() or not 1 <= int(raw) <= MAX_PERIOD_DAYS:
+        await message.answer(
+            f"❌ 1 dan {MAX_PERIOD_DAYS} gacha son kiriting. Bekor qilish uchun /start bosing."
+        )
+        return
+    data = await state.get_data()
+    await state.clear()
+    svc = _service()
+    if not svc or not data.get("fine_object_id"):
+        await message.answer(NOT_READY)
+        return
+    await message.answer(await _save_period_days(svc, data["fine_object_id"], int(raw)), parse_mode="HTML")
 
 
 async def _save_start_date(svc: FineService, object_id: int, start: date) -> str:
@@ -167,7 +265,7 @@ async def _save_start_date(svc: FineService, object_id: int, start: date) -> str
     svc.set_start_date(object_id, start)
     return (
         f"✅ <b>{html.escape(obj['name'])}</b> — boshlanish sanasi: <b>{fmt(start)}</b>\n"
-        f"{settings.FINE_PERIOD_DAYS} kunlik hisob shu kundan yuradi."
+        "Checkpoint muddati hisobi shu kundan yuradi."
     )
 
 
@@ -302,7 +400,7 @@ async def fine_assign(callback: CallbackQuery, bot: Bot):
         "💸 <b>Sizga jarima yozildi</b>\n\n"
         f"🏗 Obyekt: <b>{name}</b>\n"
         f"📅 Davr: {period}\n"
-        f"❌ Bu {settings.FINE_PERIOD_DAYS} kun ichida obyektda bir marta ham checkpoint qilinmadi.\n"
+        "❌ Bu davr ichida obyektda bir marta ham checkpoint qilinmadi.\n"
         f"💰 Jarima: <b>{money(fine['amount'])}</b>\n\n"
         f"Savol bo'lsa admin: @{settings.FINE_ADMIN_USERNAME}",
     )

@@ -97,6 +97,31 @@ class FineService:
     def set_setting(self, key: str, value: str) -> None:
         self.sb.table("bot_settings").upsert({"key": key, "value": value}).execute()
 
+    def object_settings(self) -> Tuple[Dict[int, int], Dict[int, date]]:
+        """Obyektlarning shaxsiy sozlamalari: ({id: muddat kunlarda}, {id: hisob qayta boshlangan kun})."""
+        res = self.sb.table("bot_settings").select("*").limit(1000).execute()
+        days: Dict[int, int] = {}
+        anchors: Dict[int, date] = {}
+        for row in res.data or []:
+            key, value = row.get("key") or "", row.get("value")
+            try:
+                if key.startswith("obj_days:") and value:
+                    days[int(key.split(":")[1])] = int(value)
+                elif key.startswith("obj_anchor:") and parse_date(value):
+                    anchors[int(key.split(":")[1])] = parse_date(value)
+            except ValueError:
+                continue
+        return days, anchors
+
+    def set_period_days(self, object_id: int, days: Optional[int], today: date) -> None:
+        """Obyekt uchun muddatni o'zgartiradi (None — standart). Hisob shu kundan qaytadan boshlanadi."""
+        self.set_setting(f"obj_days:{object_id}", str(days) if days else "")
+        self.set_setting(f"obj_anchor:{object_id}", today.isoformat())
+        self.sb.table("objects").update({
+            "fine_checked_until": None,
+            "fine_warned_period": None,
+        }).eq("id", object_id).execute()
+
     def launch_date(self) -> Optional[date]:
         return parse_date(self.get_setting(LAUNCH_KEY))
 

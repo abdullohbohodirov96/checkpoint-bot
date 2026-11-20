@@ -22,3 +22,4 @@ class AdminAddObjectStates(StatesGroup):
 class FineStates(StatesGroup):
     """Admin: obyekt boshlanish sanasini kiritish"""
     entering_start_date = State()
+    entering_period_days = State()

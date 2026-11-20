@@ -27,7 +27,8 @@ async def show_help(message: Message, state: FSMContext):
         "❌ Uzoqda — rad etiladi\n\n"
         "📋 <b>Mening tarixim</b> — barcha checkpointlaringiz\n\n"
         f"💰 <b>Jarima qoidasi</b>\n"
-        f"Har bir obyektda har {settings.FINE_PERIOD_DAYS} kunda kamida 1 marta checkpoint bo'lishi shart. "
+        f"Har bir obyektda har {settings.FINE_PERIOD_DAYS} kunda (ayrim obyektlarda admin belgilagan muddatda) "
+        "kamida 1 marta checkpoint bo'lishi shart. "
         f"Bo'lmasa mas'ul ishchiga {settings.FINE_AMOUNT}$ jarima yoziladi. "
         "Batafsil: «💰 Jarimalarim» tugmasi."
     )

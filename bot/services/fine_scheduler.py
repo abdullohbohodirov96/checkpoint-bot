@@ -60,14 +60,16 @@ def rules_text() -> str:
     n = settings.FINE_PERIOD_DAYS
     return (
         "📌 <b>Qoida:</b>\n"
-        f"• Har bir obyektda <b>har {n} kunda kamida 1 marta</b> checkpoint qilinishi shart.\n"
-        f"• {n} kunlik hisob obyekt ochilgan kundan boshlab yuradi.\n"
-        f"• Obyektda {n} kun ichida bir marta ham qabul qilingan (✅) checkpoint bo'lmasa — "
+        f"• Har bir obyektda <b>har {n} kunda kamida 1 marta</b> checkpoint qilinishi shart "
+        "(ayrim obyektlarga admin boshqa muddat belgilashi mumkin).\n"
+        "• Hisob obyekt ochilgan kundan boshlab yuradi.\n"
+        "• Obyektda muddat ichida bir marta ham qabul qilingan (✅) checkpoint bo'lmasa — "
         f"shu obyektga mas'ul ishchiga <b>{settings.FINE_AMOUNT}$ jarima</b> yoziladi.\n"
         "• Qoida <b>barcha obyektlar</b> uchun amal qiladi.\n"
         "• Faqat joyida qilingan (✅ qabul qilingan) checkpoint hisobga olinadi.\n\n"
         "👤 Mas'ul ishchi — obyektda oxirgi marta checkpoint qilgan ishchi.\n"
-        f"⏰ Muddat tugashiga {settings.FINE_WARN_DAYS} kun qolganda bot eslatma yuboradi.\n"
+        f"⏰ Muddat tugashiga {settings.FINE_WARN_DAYS} kun qolganda (standart muddatda — "
+        f"{n - settings.FINE_WARN_DAYS} kun o'tganda) bot eslatma yuboradi.\n"
         "📊 Har oyning oxirgi kuni jarimalar hisoboti admin va ishchilarga yuboriladi.\n"
         "💰 Jarimalaringizni «💰 Jarimalarim» tugmasi orqali ko'rishingiz mumkin."
     )
@@ -90,8 +92,8 @@ async def db(fn, *args):
 
 def reason_text(fine: Dict[str, Any], ctx: Dict[str, Any], today: date) -> str:
     """Jarima sababi: qaysi davrda borilmagan, oxirgi va keyingi checkpoint qachon bo'lgan."""
-    n = settings.FINE_PERIOD_DAYS
     ps, pe = parse_date(fine["period_start"]), parse_date(fine["period_end"])
+    n = (pe - ps).days
     last, nxt = ctx.get("last"), ctx.get("next")
     lines = [f"❌ {fmt_period(ps, pe)} — {n} kun ichida bir marta ham checkpoint qilinmadi."]
     if last:
@@ -183,7 +185,7 @@ async def ask_start_date(bot: Bot, svc: FineService, obj: Dict[str, Any]) -> boo
     first = await db(svc.first_checkpoint_date, obj["name"])
     text = (
         f"🗓 <b>{html.escape(obj['name'])}</b> obyekti qaysi kundan boshlangan?\n\n"
-        f"Jarima hisobi ({settings.FINE_PERIOD_DAYS} kunlik) shu kundan yuradi. "
+        "Jarima hisobi shu kundan yuradi. "
         "Sana kiritilmaguncha bu obyekt bo'yicha jarima hisoblanmaydi."
     )
     return await safe_send(
@@ -220,7 +222,7 @@ async def notify_fine(bot: Bot, svc: FineService, fine: Dict[str, Any], today: d
     period = fmt_period(ps, pe)
     amount = money(fine["amount"])
     reason = (await fine_reasons(svc, [fine], today)).get(fine["id"]) or (
-        f"❌ {period} — {settings.FINE_PERIOD_DAYS} kun ichida bir marta ham checkpoint qilinmadi."
+        f"❌ {period} — {(pe - ps).days} kun ichida bir marta ham checkpoint qilinmadi."
     )
 
     if fine.get("user_id"):
@@ -251,13 +253,18 @@ async def notify_fine(bot: Bot, svc: FineService, fine: Dict[str, Any], today: d
 
 async def process_fines(bot: Bot, svc: FineService, launch: date, today: date) -> int:
     created = 0
+    days_by_obj, anchors = await db(svc.object_settings)
     for obj in await db(svc.objects):
         start = parse_date(obj.get("start_date"))
         if not start:
             continue
         try:
             periods = due_periods(
-                start, launch, parse_date(obj.get("fine_checked_until")), today, settings.FINE_PERIOD_DAYS
+                start,
+                max(launch, anchors.get(obj["id"], launch)),
+                parse_date(obj.get("fine_checked_until")),
+                today,
+                days_by_obj.get(obj["id"]) or settings.FINE_PERIOD_DAYS,
             )
             for ps, pe in periods:
                 if not await db(svc.has_checkpoint, obj["name"], ps, pe) and not await db(svc.fine_exists, obj["id"], ps):
@@ -278,16 +285,19 @@ async def process_fines(bot: Bot, svc: FineService, launch: date, today: date) -
 # ──────────────────────────────────────────
 
 async def send_warnings(bot: Bot, svc: FineService, launch: date, today: date) -> None:
+    days_by_obj, anchors = await db(svc.object_settings)
     for obj in await db(svc.objects):
         start = parse_date(obj.get("start_date"))
         if not start:
             continue
         try:
-            period = current_period(start, launch, today, settings.FINE_PERIOD_DAYS)
+            days = days_by_obj.get(obj["id"]) or settings.FINE_PERIOD_DAYS
+            period = current_period(start, max(launch, anchors.get(obj["id"], launch)), today, days)
             if not period:
                 continue
             ps, pe = period
-            if (pe - today).days > settings.FINE_WARN_DAYS:
+            # Qisqa muddatli obyektda eslatma davr boshidayoq ketib qolmasin
+            if (pe - today).days > min(settings.FINE_WARN_DAYS, days - 1):
                 continue
             if parse_date(obj.get("fine_warned_period")) == ps:
                 continue
@@ -299,7 +309,8 @@ async def send_warnings(bot: Bot, svc: FineService, launch: date, today: date) -
                 await safe_send(
                     bot, worker[0],
                     "⚠️ <b>Eslatma</b>\n\n"
-                    f"🏗 <b>{html.escape(obj['name'])}</b> obyektida bu davrda ({fmt_period(ps, pe)}) hali checkpoint yo'q.\n"
+                    f"🏗 <b>{html.escape(obj['name'])}</b> obyektida bu {days} kunlik davrda "
+                    f"({fmt_period(ps, pe)}) hali checkpoint yo'q.\n"
                     f"📅 Oxirgi kun: <b>{fmt(last_day)}</b>\n"
                     f"Shu kungacha checkpoint qilmasangiz <b>{settings.FINE_AMOUNT}$ jarima</b> yoziladi.",
                 )

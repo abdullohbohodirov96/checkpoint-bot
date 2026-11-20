@@ -139,6 +139,7 @@ docker-compose logs -f bot
 - Har bir obyektda **boshlanish kunidan boshlab har 7 kunda kamida 1 ta** qabul qilingan checkpoint bo'lishi shart.
 - Bo'lmasa obyektga mas'ul ishchiga (shu obyektda oxirgi checkpoint qilgan ishchi) **50$** jarima yoziladi. Ishchi noma'lum bo'lsa bot admindan so'raydi.
 - Yangi obyekt qo'shilganda boshlanish sanasi = qo'shilgan kun. Sanasi yo'q obyektlar uchun bot admindan (`FINE_ADMIN_ID`) so'raydi.
+- Muddat standart 7 kun; admin «💰 Jarimalar» → «Obyektlar: sana va muddat» orqali istalgan obyektga boshqa muddat (1–90 kun) qo'yishi mumkin. Muddat o'zgarsa, shu obyekt bo'yicha hisob o'sha kundan qaytadan boshlanadi.
 - Tizim ishga tushgan kundan oldingi davrlar uchun jarima yozilmaydi.
 - Muddat tugashiga 2 kun qolganda ishchiga eslatma boradi.
 - Har oyning oxirgi kuni soat 18:00 da (Toshkent) jarimalar hisoboti adminlarga va ishchilarga yuboriladi.

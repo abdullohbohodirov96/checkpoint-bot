@@ -160,17 +160,40 @@ def fine_admin_kb(fine_id: int, workers: Optional[Dict[int, str]] = None) -> Inl
 
 
 def fines_menu_kb() -> InlineKeyboardMarkup:
-    buttons = [[InlineKeyboardButton(text="🗓 Obyektlar boshlanish sanalari", callback_data="fstart:list")]]
+    buttons = [[InlineKeyboardButton(text="🗓 Obyektlar: sana va muddat (kun)", callback_data="fstart:list")]]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def start_dates_list_kb(objects: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+def period_days_kb(object_id: int, default_days: int) -> InlineKeyboardMarkup:
+    """Obyekt uchun borilish muddatini (kun) tanlash"""
+    row = [
+        InlineKeyboardButton(text=f"{n} kun", callback_data=f"flimit:set:{object_id}:{n}")
+        for n in (3, 5, 7, 10, 14)
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=[
+        row,
+        [InlineKeyboardButton(text="✍️ Boshqa son kiritish", callback_data=f"flimit:custom:{object_id}")],
+        [InlineKeyboardButton(text=f"↩️ Standart ({default_days} kun)", callback_data=f"flimit:set:{object_id}:0")],
+    ])
+
+
+def object_fine_settings_kb(object_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🗓 Boshlanish sanasini o'zgartirish", callback_data=f"fstart:dates:{object_id}")],
+        [InlineKeyboardButton(text="⏱ Muddatni (kun) o'zgartirish", callback_data=f"flimit:ask:{object_id}")],
+    ])
+
+
+def start_dates_list_kb(
+    objects: List[Dict[str, Any]], days_by_obj: Optional[Dict[int, int]] = None, default_days: int = 7
+) -> InlineKeyboardMarkup:
+    days_by_obj = days_by_obj or {}
     buttons = []
     for obj in objects:
         raw = obj.get("start_date")
         label = f"{raw[8:10]}.{raw[5:7]}.{raw[:4]}" if raw else "❓ kiritilmagan"
         buttons.append([InlineKeyboardButton(
-            text=f"🏗 {obj.get('name', '?')} — {label}"[:60],
+            text=f"🏗 {obj.get('name', '?')[:30]} — {label} · {days_by_obj.get(obj.get('id')) or default_days} kun",
             callback_data=f"fstart:pick:{obj.get('id', 0)}",
         )])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
