@@ -9,7 +9,8 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
-from typing import List, Dict, Any
+from datetime import date
+from typing import List, Dict, Any, Optional
 
 
 # ──────────────────────────────────────────────────
@@ -29,6 +30,7 @@ def admin_menu_kb() -> ReplyKeyboardMarkup:
             KeyboardButton(text="🗑 Manzilni o'chirish"),
         ],
         [KeyboardButton(text="📋 Checkpointlar tarixi")],
+        [KeyboardButton(text="💰 Jarimalar")],
         [KeyboardButton(text="❓ Yordam")],
     ]
     return ReplyKeyboardMarkup(
@@ -124,4 +126,51 @@ def admin_history_pagination_kb(page: int, total_pages: int) -> InlineKeyboardMa
     if nav:
         buttons.append(nav)
 
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+# ──────────────────────────────────────────────────
+# JARIMALAR
+# ──────────────────────────────────────────────────
+
+def start_date_kb(object_id: int, created: Optional[date], first_checkpoint: Optional[date]) -> InlineKeyboardMarkup:
+    """Obyekt boshlanish sanasini tanlash"""
+    buttons = [[InlineKeyboardButton(text="📅 Bugundan", callback_data=f"fstart:today:{object_id}")]]
+    if created:
+        buttons.append([InlineKeyboardButton(
+            text=f"🗓 Qo'shilgan kundan ({created.strftime('%d.%m.%Y')})",
+            callback_data=f"fstart:set:{object_id}:{created.strftime('%Y%m%d')}",
+        )])
+    if first_checkpoint and first_checkpoint != created:
+        buttons.append([InlineKeyboardButton(
+            text=f"📍 Birinchi checkpoint kunidan ({first_checkpoint.strftime('%d.%m.%Y')})",
+            callback_data=f"fstart:set:{object_id}:{first_checkpoint.strftime('%Y%m%d')}",
+        )])
+    buttons.append([InlineKeyboardButton(text="✍️ Boshqa sana kiritish", callback_data=f"fstart:custom:{object_id}")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def fine_admin_kb(fine_id: int, workers: Optional[Dict[int, str]] = None) -> InlineKeyboardMarkup:
+    """Jarima xabari ostidagi tugmalar. workers berilsa — ishchini tanlash tugmalari ham chiqadi."""
+    buttons = []
+    for uid, name in list((workers or {}).items())[:30]:
+        buttons.append([InlineKeyboardButton(text=f"👤 {name}"[:60], callback_data=f"fine:assign:{fine_id}:{uid}")])
+    buttons.append([InlineKeyboardButton(text="❌ Jarimani bekor qilish", callback_data=f"fine:cancel:{fine_id}")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def fines_menu_kb() -> InlineKeyboardMarkup:
+    buttons = [[InlineKeyboardButton(text="🗓 Obyektlar boshlanish sanalari", callback_data="fstart:list")]]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def start_dates_list_kb(objects: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    buttons = []
+    for obj in objects:
+        raw = obj.get("start_date")
+        label = f"{raw[8:10]}.{raw[5:7]}.{raw[:4]}" if raw else "❓ kiritilmagan"
+        buttons.append([InlineKeyboardButton(
+            text=f"🏗 {obj.get('name', '?')} — {label}"[:60],
+            callback_data=f"fstart:pick:{obj.get('id', 0)}",
+        )])
     return InlineKeyboardMarkup(inline_keyboard=buttons)

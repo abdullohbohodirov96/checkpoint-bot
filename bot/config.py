@@ -23,9 +23,23 @@ class Settings(BaseSettings):
     @property
     def admin_ids_list(self) -> list[int]:
         try:
-            return [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip()]
+            ids = [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip()]
         except:
-            return []
+            ids = []
+        # Jarima admini har doim admin hisoblanadi
+        if self.FINE_ADMIN_ID and self.FINE_ADMIN_ID not in ids:
+            ids.append(self.FINE_ADMIN_ID)
+        return ids
+
+    # ── Jarima tizimi ──
+    # Obyekt boshlanish sanasi so'raladigan va jarimalar bo'yicha mas'ul admin
+    FINE_ADMIN_ID: int = 82167016
+    FINE_ADMIN_USERNAME: str = "A70906"
+    # Jarima miqdori ($) va davr (kun)
+    FINE_AMOUNT: int = 50
+    FINE_PERIOD_DAYS: int = 7
+    # Muddat tugashiga necha kun qolganda ishchiga eslatma yuboriladi
+    FINE_WARN_DAYS: int = 2
 
     # Kanal yoki Gruppa ID
     CHANNEL_ID: int = -5175061069

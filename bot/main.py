@@ -19,7 +19,8 @@ from bot.config import get_settings
 from bot.database.db import init_db
 
 # Handlerlar
-from bot.handlers import start, checkpoint, history, objects_list, help, settings, admin
+from bot.handlers import start, checkpoint, history, objects_list, help, settings, admin, fines
+from bot.services.fine_scheduler import fines_loop
 
 # Sozlamalar
 config = get_settings()
@@ -70,6 +71,7 @@ async def main():
         help.router,
         settings.router,
         admin.router,
+        fines.router,
     )
 
     # Bot ma'lumotlarini olish
@@ -78,6 +80,9 @@ async def main():
     logger.info(f"🔑 Admin Telegram ID(s): {config.admin_ids_list}")
 
 
+
+    # Jarima tizimi: fon tekshiruvi (jarimalar, eslatmalar, oylik hisobot)
+    fines_task = asyncio.create_task(fines_loop(bot))
 
     # Webhook or Polling
     webhook_url = os.environ.get("RENDER_EXTERNAL_URL", config.WEBHOOK_URL)

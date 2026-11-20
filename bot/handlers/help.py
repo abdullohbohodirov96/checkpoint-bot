@@ -25,7 +25,11 @@ async def show_help(message: Message, state: FSMContext):
         "4. Bot masofani tekshiradi\n\n"
         "✅ 500 metr ichida — checkpoint qabul\n"
         "❌ Uzoqda — rad etiladi\n\n"
-        "📋 <b>Mening tarixim</b> — barcha checkpointlaringiz"
+        "📋 <b>Mening tarixim</b> — barcha checkpointlaringiz\n\n"
+        f"💰 <b>Jarima qoidasi</b>\n"
+        f"Har bir obyektda har {settings.FINE_PERIOD_DAYS} kunda kamida 1 marta checkpoint bo'lishi shart. "
+        f"Bo'lmasa mas'ul ishchiga {settings.FINE_AMOUNT}$ jarima yoziladi. "
+        "Batafsil: «💰 Jarimalarim» tugmasi."
     )
     await message.answer(text, parse_mode="HTML")
 

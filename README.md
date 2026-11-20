@@ -134,6 +134,19 @@ docker-compose logs -f bot
   - 📋 Barcha obyektlar
   - 📊 Checkpoint tarixlari
 
+## 💰 Jarima tizimi
+
+- Har bir obyektda **boshlanish kunidan boshlab har 7 kunda kamida 1 ta** qabul qilingan checkpoint bo'lishi shart.
+- Bo'lmasa obyektga mas'ul ishchiga (shu obyektda oxirgi checkpoint qilgan ishchi) **50$** jarima yoziladi. Ishchi noma'lum bo'lsa bot admindan so'raydi.
+- Yangi obyekt qo'shilganda boshlanish sanasi = qo'shilgan kun. Sanasi yo'q obyektlar uchun bot admindan (`FINE_ADMIN_ID`) so'raydi.
+- Tizim ishga tushgan kundan oldingi davrlar uchun jarima yozilmaydi.
+- Muddat tugashiga 2 kun qolganda ishchiga eslatma boradi.
+- Har oyning oxirgi kuni soat 18:00 da (Toshkent) jarimalar hisoboti adminlarga va ishchilarga yuboriladi.
+- Admin jarimani xabar ostidagi tugma bilan bekor qilishi mumkin; «💰 Jarimalar» menyusida joriy oy jarimalari va obyektlar sanalari.
+- Birinchi marta ishga tushganda bot hammaga qoida haqida e'lon yuboradi.
+
+**O'rnatish:** Supabase → SQL Editor'da `migrations/2026_11_fines.sql` ni bir marta ishga tushiring. Sozlamalar: `FINE_ADMIN_ID`, `FINE_ADMIN_USERNAME`, `FINE_AMOUNT`, `FINE_PERIOD_DAYS`, `FINE_WARN_DAYS`.
+
 ## 📐 Masofa hisoblash
 
 **Haversine formulasi** ishlatiladi:
