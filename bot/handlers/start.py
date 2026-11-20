@@ -22,6 +22,15 @@ def get_menu_kb(telegram_id: int):
     return main_menu_kb()
 
 
+def _remember_user(user_id: int, username: str | None, full_name: str) -> None:
+    """E'lon va oylik hisobot yuborish uchun foydalanuvchini saqlab qo'yamiz."""
+    try:
+        from bot.services.fine_service import FineService
+        FineService().upsert_user(user_id, f"@{username}" if username else full_name, full_name)
+    except Exception as e:
+        print(f"⚠️ [DEBUG] Foydalanuvchini saqlashda xato: {e}")
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     """
@@ -37,6 +46,8 @@ async def cmd_start(message: Message, state: FSMContext):
     if message.from_user.last_name:
         full_name += f" {message.from_user.last_name}"
     full_name = full_name.strip() or "Foydalanuvchi"
+
+    _remember_user(message.from_user.id, message.from_user.username, full_name)
 
     text = (
         f"👋 Assalomu alaykum, <b>{full_name}</b>!\n\n"

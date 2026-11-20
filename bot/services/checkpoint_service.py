@@ -216,7 +216,14 @@ class CheckpointService:
         if not self.sb: return None
         try:
             print(f"▶️ [DEBUG] INSERT into 'objects' table: {data}")
-            res = self.sb.table("objects").insert(data).execute()
+            # Obyekt ochilgan kun — jarima hisobi shu kundan boshlanadi (Toshkent vaqti)
+            today = (datetime.now(timezone.utc) + timedelta(hours=5)).date().isoformat()
+            try:
+                res = self.sb.table("objects").insert({**data, "start_date": today}).execute()
+            except Exception as e:
+                # start_date ustuni hali yo'q bo'lsa (migratsiya qilinmagan) — eski usulda saqlaymiz
+                print(f"⚠️ [DEBUG] start_date bilan INSERT bo'lmadi: {e}")
+                res = self.sb.table("objects").insert(data).execute()
             print(f"✅ [DEBUG] INSERT success: {res.data}")
             return res.data[0] if res.data else None
         except Exception as e:

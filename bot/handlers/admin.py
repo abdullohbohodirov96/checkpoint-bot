@@ -173,7 +173,11 @@ async def add_coordinates(message: Message, state: FSMContext):
         f"✅ <b>Obyekt muvaffaqiyatli qo'shildi!</b>\n\n"
         f"🏗 {obj['name']}\n"
         f"📍 {obj['latitude']}, {obj['longitude']}\n"
-        f"📏 Radius: {obj.get('radius', 500)} m",
+        f"📏 Radius: {obj.get('radius', 500)} m"
+        + (
+            f"\n🗓 Boshlanish sanasi: bugun — {settings.FINE_PERIOD_DAYS} kunlik checkpoint hisobi shu kundan yuradi"
+            if obj.get("start_date") else ""
+        ),
         parse_mode="HTML",
     )
 

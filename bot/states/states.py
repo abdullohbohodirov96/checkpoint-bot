@@ -17,3 +17,8 @@ class AdminAddObjectStates(StatesGroup):
     """Admin: yangi obyekt qo'shish"""
     entering_name = State()
     entering_coordinates = State()
+
+
+class FineStates(StatesGroup):
+    """Admin: obyekt boshlanish sanasini kiritish"""
+    entering_start_date = State()

@@ -27,6 +27,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
             KeyboardButton(text="📋 Tarix"),
             KeyboardButton(text="❓ Yordam"),
         ],
+        [KeyboardButton(text="💰 Jarimalarim")],
     ]
     return ReplyKeyboardMarkup(
         keyboard=keyboard,
