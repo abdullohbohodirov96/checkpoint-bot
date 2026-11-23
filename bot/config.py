@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     FINE_PERIOD_DAYS: int = 7
     # Muddat tugashiga necha kun qolganda ishchiga eslatma yuboriladi
     FINE_WARN_DAYS: int = 2
+    # Eslatma va "jarima yozildi" xabarlarini yuborish. O'chiq bo'lsa jarimalar baribir
+    # hisoblanadi: «💰 Jarimalar» / «💰 Jarimalarim» menyusida va oylik hisobotda ko'rinadi.
+    FINE_NOTIFY: bool = False
 
     # Kanal yoki Gruppa ID
     CHANNEL_ID: int = -5175061069

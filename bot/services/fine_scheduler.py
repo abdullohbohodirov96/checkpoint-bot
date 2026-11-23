@@ -68,8 +68,12 @@ def rules_text() -> str:
         "• Qoida <b>barcha obyektlar</b> uchun amal qiladi.\n"
         "• Faqat joyida qilingan (✅ qabul qilingan) checkpoint hisobga olinadi.\n\n"
         "👤 Mas'ul ishchi — obyektda oxirgi marta checkpoint qilgan ishchi.\n"
-        f"⏰ Muddat tugashiga {settings.FINE_WARN_DAYS} kun qolganda (standart muddatda — "
-        f"{n - settings.FINE_WARN_DAYS} kun o'tganda) bot eslatma yuboradi.\n"
+        + (
+            f"⏰ Muddat tugashiga {settings.FINE_WARN_DAYS} kun qolganda (standart muddatda — "
+            f"{n - settings.FINE_WARN_DAYS} kun o'tganda) bot eslatma yuboradi.\n"
+            if settings.FINE_NOTIFY else ""
+        )
+        +
         "📊 Har oyning oxirgi kuni jarimalar hisoboti admin va ishchilarga yuboriladi.\n"
         "💰 Jarimalaringizni «💰 Jarimalarim» tugmasi orqali ko'rishingiz mumkin."
     )
@@ -217,6 +221,8 @@ async def ask_missing_start_dates(bot: Bot, svc: FineService) -> None:
 # ──────────────────────────────────────────
 
 async def notify_fine(bot: Bot, svc: FineService, fine: Dict[str, Any], today: date) -> None:
+    if not settings.FINE_NOTIFY:
+        return
     ps, pe = parse_date(fine["period_start"]), parse_date(fine["period_end"])
     name = html.escape(fine["object_name"])
     period = fmt_period(ps, pe)
@@ -285,6 +291,8 @@ async def process_fines(bot: Bot, svc: FineService, launch: date, today: date) -
 # ──────────────────────────────────────────
 
 async def send_warnings(bot: Bot, svc: FineService, launch: date, today: date) -> None:
+    if not settings.FINE_NOTIFY:
+        return
     days_by_obj, anchors = await db(svc.object_settings)
     for obj in await db(svc.objects):
         start = parse_date(obj.get("start_date"))

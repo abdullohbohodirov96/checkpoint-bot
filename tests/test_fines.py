@@ -12,6 +12,7 @@ os.environ.setdefault("SUPABASE_URL", "http://fake")
 os.environ.setdefault("SUPABASE_KEY", "fake")
 os.environ["ADMIN_IDS"] = "111"
 os.environ["CHANNEL_ID"] = "-100"
+os.environ["FINE_NOTIFY"] = "true"
 
 from bot.database import db  # noqa: E402
 from bot.services import fine_scheduler as fs  # noqa: E402

@@ -141,7 +141,7 @@ docker-compose logs -f bot
 - Yangi obyekt qo'shilganda boshlanish sanasi = qo'shilgan kun. Sanasi yo'q obyektlar uchun bot admindan (`FINE_ADMIN_ID`) so'raydi.
 - Muddat standart 7 kun; admin «💰 Jarimalar» → «Obyektlar: sana va muddat» orqali istalgan obyektga boshqa muddat (1–90 kun) qo'yishi mumkin. Muddat o'zgarsa, shu obyekt bo'yicha hisob o'sha kundan qaytadan boshlanadi.
 - Tizim ishga tushgan kundan oldingi davrlar uchun jarima yozilmaydi.
-- Muddat tugashiga 2 kun qolganda ishchiga eslatma boradi.
+- Eslatma (muddatga 2 kun qolganda) va "jarima yozildi" xabarlari standart holatda **o'chiq**; yoqish uchun `FINE_NOTIFY=true`. O'chiq bo'lsa ham jarimalar hisoblanadi, menyuda va oylik hisobotda ko'rinadi.
 - Har oyning oxirgi kuni soat 18:00 da (Toshkent) jarimalar hisoboti adminlarga va ishchilarga yuboriladi.
 - Admin jarimani xabar ostidagi tugma bilan bekor qilishi mumkin; «💰 Jarimalar» menyusida joriy oy jarimalari va obyektlar sanalari.
 - Birinchi marta ishga tushganda bot hammaga qoida haqida e'lon yuboradi.
