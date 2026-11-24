@@ -73,8 +73,11 @@ def rules_text() -> str:
             f"{n - settings.FINE_WARN_DAYS} kun o'tganda) bot eslatma yuboradi.\n"
             if settings.FINE_NOTIFY else ""
         )
+        + (
+            "📊 Har oyning oxirgi kuni jarimalar hisoboti admin va ishchilarga yuboriladi.\n"
+            if settings.FINE_NOTIFY else ""
+        )
         +
-        "📊 Har oyning oxirgi kuni jarimalar hisoboti admin va ishchilarga yuboriladi.\n"
         "💰 Jarimalaringizni «💰 Jarimalarim» tugmasi orqali ko'rishingiz mumkin."
     )
 
@@ -199,6 +202,8 @@ async def ask_start_date(bot: Bot, svc: FineService, obj: Dict[str, Any]) -> boo
 
 
 async def ask_missing_start_dates(bot: Bot, svc: FineService) -> None:
+    if not settings.FINE_NOTIFY:
+        return
     now_utc = datetime.now(timezone.utc)
     for obj in await db(svc.objects):
         if obj.get("start_date"):
@@ -391,6 +396,8 @@ def worker_report_text(
 
 
 async def monthly_report(bot: Bot, svc: FineService, launch: date, today: date, hour: int) -> bool:
+    if not settings.FINE_NOTIFY:
+        return False
     month_end = report_target(today, hour)
     if not month_end or month_end < launch:
         return False
